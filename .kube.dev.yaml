@@ -1,0 +1,5 @@
+---
+- name: resolver
+  recipe: internal-service
+  clients: workflow
+  image: quay.io/ukhomeofficedigital/asl-resolver:{{.DRONE_COMMIT_SHA}}
