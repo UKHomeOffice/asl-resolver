@@ -1,7 +1,6 @@
 ---
 - name: resolver
-  recipe: internal-service
-  clients: workflow
+  recipe: worker
   image: quay.io/ukhomeofficedigital/asl-resolver:{{.DRONE_COMMIT_SHA}}
   env:
     DATABASE_HOST:
@@ -24,3 +23,16 @@
       secret: true
       name: asl-dev-rds
       key: port
+    SQS_REGION: eu-west-2
+    SQS_ACCESS_KEY:
+      secret: true
+      name: asl-changerequests-dev-sqs
+      key: access_key_id
+    SQS_SECRET:
+      secret: true
+      name: asl-changerequests-dev-sqs
+      key: secret_access_key
+    SQS_URL:
+      secret: true
+      name: asl-changerequests-dev-sqs
+      key: sqs_queue_url

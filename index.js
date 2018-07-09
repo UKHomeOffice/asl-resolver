@@ -1,19 +1,19 @@
-const API = require('./lib/api');
-const settings = require('./config');
+const Consumer = require('sqs-consumer');
+const AWS = require('aws-sdk');
+const config = require('./config');
 
-const server = API(settings).listen(settings.port, (err, result) => {
-  if (err) {
-    return console.error(err);
-  }
-  console.log(`Listening on port ${server.address().port}`);
+const handleMessage = require('./lib/worker')(config);
+
+const sqs = new AWS.SQS({
+  region: config.sqs.region,
+  accessKeyId: config.sqs.accessKey,
+  secretAccessKey: config.sqs.secret
 });
 
-process.on('SIGINT', () => {
-  if (server.listening) {
-    console.log('Attempting to exit gracefully.');
-    server.close(() => {
-      console.log('Server closed. Quitting.');
-      process.exit();
-    });
-  }
+const app = Consumer.create({
+  queueUrl: config.sqs.url,
+  handleMessage,
+  sqs
 });
+
+app.start();
