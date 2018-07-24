@@ -19,6 +19,11 @@ const stack = files.reduce((p, file) => {
   });
 }, Promise.resolve());
 
-stack.catch(e => {
-  process.exit(1);
-});
+stack
+  .then(() => {
+    console.log('Completed injection');
+    process.exit(0);
+  })
+  .catch(e => {
+    process.exit(1);
+  });

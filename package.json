@@ -21,6 +21,7 @@
   "dependencies": {
     "@asl/schema": "^3.1.0",
     "aws-sdk": "^2.270.1",
+    "jsonwebtoken": "^8.3.0",
     "r2": "^2.0.1",
     "sqs-consumer": "^3.8.0",
     "url-search-params": "^1.0.2"

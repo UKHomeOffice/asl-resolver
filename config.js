@@ -20,5 +20,9 @@ module.exports = {
     secret: process.env.KEYCLOAK_SECRET,
     username: process.env.KEYCLOAK_USERNAME,
     password: process.env.KEYCLOAK_PASSWORD
+  },
+  jwt: {
+    secret: process.env.JWT_SECRET,
+    expiry: process.env.JWT_EXPIRY || '7 days'
   }
 };
