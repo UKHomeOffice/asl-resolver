@@ -56,3 +56,4 @@
       name: asl-dev-keycloak
       key: password
     EMAILER_SERVICE: https://emailer:10443
+    NODE_TLS_REJECT_UNAUTHORIZED: "0"
