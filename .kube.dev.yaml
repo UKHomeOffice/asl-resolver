@@ -36,4 +36,8 @@
       secret: true
       name: asl-changerequests-dev-sqs
       key: sqs_queue_url
+    JWT_SECRET:
+      secret: true
+      name: asl-dev-jwt
+      key: token
     EMAILER_SERVICE: https://emailer:10443
