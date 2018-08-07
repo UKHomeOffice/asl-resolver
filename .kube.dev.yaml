@@ -40,4 +40,19 @@
       secret: true
       name: asl-dev-jwt
       key: token
+    KEYCLOAK_REALM: Asl-dev
+    KEYCLOAK_URL: https://sso-dev.notprod.homeoffice.gov.uk/auth
+    KEYCLOAK_CLIENT: asl-dev-connect
+    KEYCLOAK_SECRET:
+      secret: true
+      name: asl-dev-auth
+      key: secret
+    KEYCLOAK_USERNAME:
+      secret: true
+      name: asl-dev-keycloak
+      key: username
+    KEYCLOAK_PASSWORD:
+      secret: true
+      name: asl-dev-keycloak
+      key: password
     EMAILER_SERVICE: https://emailer:10443
