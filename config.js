@@ -24,5 +24,8 @@ module.exports = {
   jwt: {
     secret: process.env.JWT_SECRET,
     expiry: process.env.JWT_EXPIRY || '7 days'
+  },
+  emailer: {
+    host: process.env.EMAILER_SERVICE
   }
 };

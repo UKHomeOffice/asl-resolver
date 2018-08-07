@@ -36,3 +36,4 @@
       secret: true
       name: asl-changerequests-dev-sqs
       key: sqs_queue_url
+    EMAILER_SERVICE: https://emailer:10443
