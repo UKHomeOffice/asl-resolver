@@ -19,9 +19,13 @@
   },
   "homepage": "https://github.com/UKHomeOffice/asl-resolver#readme",
   "dependencies": {
-    "@asl/schema": "^3.1.0",
+    "@asl/schema": "^3.2.0",
     "aws-sdk": "^2.270.1",
-    "sqs-consumer": "^3.8.0"
+    "jsonwebtoken": "^8.3.0",
+    "lodash": "^4.17.10",
+    "r2": "^2.0.1",
+    "sqs-consumer": "^3.8.0",
+    "url-search-params": "^1.0.2"
   },
   "devDependencies": {
     "dotenv": "^6.0.0",

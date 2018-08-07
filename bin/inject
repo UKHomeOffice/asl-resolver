@@ -1,0 +1,29 @@
+#! /usr/bin/env node
+
+require('dotenv/config');
+const path = require('path');
+const Worker = require('../lib/worker');
+const config = require('../config');
+
+const files = process.argv.slice(2);
+
+const worker = Worker(config);
+
+const stack = files.reduce((p, file) => {
+  return p.then(() => {
+    console.log(`Injecting: ${file}`);
+    const json = require(path.resolve(process.cwd(), file));
+    return new Promise((resolve, reject) => worker({ Body: JSON.stringify(json) }, e => {
+      e ? reject(e) : resolve();
+    }));
+  });
+}, Promise.resolve());
+
+stack
+  .then(() => {
+    console.log('Completed injection');
+    process.exit(0);
+  })
+  .catch(e => {
+    process.exit(1);
+  });
