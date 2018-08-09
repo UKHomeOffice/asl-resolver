@@ -1,2 +1,8 @@
 extends:
   - lennym
+
+plugins:
+  - eslint-plugin-undocumented-env
+
+rules:
+  undocumented-env/no-undocumented: 2
