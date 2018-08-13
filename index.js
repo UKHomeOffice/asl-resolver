@@ -16,4 +16,10 @@ const app = Consumer.create({
   sqs
 });
 
+app.on('error', error => {
+  console.error(error.message);
+  app.stop();
+  setTimeout(() => app.start(), 1000);
+});
+
 app.start();
