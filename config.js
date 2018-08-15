@@ -1,7 +1,6 @@
 module.exports = {
-  port: process.env.PORT || 8080,
   sqs: {
-    region: process.env.SQS_REGION || 'eu-west-2',
+    region: process.env.SQS_REGION,
     accessKey: process.env.SQS_ACCESS_KEY,
     secret: process.env.SQS_SECRET,
     url: process.env.SQS_URL
