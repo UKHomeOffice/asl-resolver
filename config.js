@@ -25,6 +25,7 @@ module.exports = {
     expiry: process.env.JWT_EXPIRY || '7 days'
   },
   emailer: {
-    host: process.env.EMAILER_SERVICE
+    host: process.env.EMAILER_SERVICE,
+    registerService: process.env.REGISTER_SERVICE
   }
 };
