@@ -37,6 +37,7 @@ The following environment variables are required:
 * `SQS_URL` - endpoint for SQS
 * `JWT_SECRET` - arbitrary string used to sign JWT tokens for invitations
 * `EMAILER_SERVICE` - url of `asl-emailer` instance used to send invitations
+* `REGISTER_SERVICE` - url of `asl-register` instance used to accept invitations
 
 The following environment variables can be optionally defined:
 
