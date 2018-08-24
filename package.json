@@ -4,8 +4,12 @@
   "description": "Workflow API for processing change requests",
   "main": "index.js",
   "scripts": {
-    "test": "eslint .",
-    "dev": "nodemon -r dotenv/config index.js"
+    "test": "npm run test:lint && npm run test:unit",
+    "pretest:unit": "npm run migrate",
+    "test:unit": "mocha --recursive",
+    "test:lint": "eslint .",
+    "dev": "nodemon -r dotenv/config index.js",
+    "migrate": "DATABASE_NAME=asl-test knex migrate:latest --knexfile ./node_modules/@asl/schema/knexfile.js"
   },
   "repository": {
     "type": "git",
@@ -19,7 +23,7 @@
   },
   "homepage": "https://github.com/UKHomeOffice/asl-resolver#readme",
   "dependencies": {
-    "@asl/schema": "^3.2.0",
+    "@asl/schema": "^4.1.0",
     "aws-sdk": "^2.270.1",
     "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.10",
@@ -32,6 +36,9 @@
     "eslint": "^5.0.1",
     "eslint-config-lennym": "^2.0.1",
     "eslint-plugin-undocumented-env": "^1.0.0",
-    "nodemon": "^1.17.5"
+    "mocha": "^5.2.0",
+    "moment": "^2.22.2",
+    "nodemon": "^1.17.5",
+    "sinon": "^6.1.5"
   }
 }
