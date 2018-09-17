@@ -56,5 +56,28 @@ describe('Profile resolver', () => {
           assert.deepEqual(profile.lastName, opts.data.lastName);
         });
     });
+
+    it('ignores superfluous params', () => {
+      it('can update a profile model', () => {
+        const opts = {
+          action: 'update',
+          data: {
+            firstName: 'Vincent',
+            lastName: 'Malloy',
+            comments: 'I am changing my name because...',
+            someField: 'This will be ignored'
+          },
+          id: ID
+        };
+        return Promise.resolve()
+          .then(() => this.profile(opts))
+          .then(() => this.models.Profile.query().findById(ID))
+          .then(profile => {
+            assert.ok(profile);
+            assert.deepEqual(profile.comments, undefined);
+            assert.deepEqual(profile.someField, undefined);
+          });
+      });
+    });
   });
 });
