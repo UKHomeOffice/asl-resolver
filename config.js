@@ -10,7 +10,7 @@ module.exports = {
     host: process.env.DATABASE_HOST,
     password: process.env.DATABASE_PASSWORD,
     port: process.env.DATABASE_PORT,
-    username: process.env.DATABASE_USERNAME
+    username: process.env.DATABASE_USERNAME || 'postgres'
   },
   auth: {
     realm: process.env.KEYCLOAK_REALM,
