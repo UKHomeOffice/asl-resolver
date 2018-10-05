@@ -54,8 +54,8 @@ describe('Invitation resolver', () => {
         email: 'test@asd.com',
         profiles: [{
           id: '221d08a3-3f9b-4167-ae64-368271569952',
-          firstName: 'Vincent',
-          lastName: 'Malloy',
+          first_name: 'Vincent',
+          last_name: 'Malloy',
           email: 'vincent@price.com'
         }]
       });
@@ -64,13 +64,13 @@ describe('Invitation resolver', () => {
     describe('Existing profile', () => {
       const data = {
         email: 'vincent@price.com',
-        firstName: 'Vincent',
-        lastName: 'Malloy',
+        first_name: 'Vincent',
+        last_name: 'Malloy',
         establishment: 8201,
         role: 'admin'
       };
 
-      it('Adds user to keycloak if they don\'t have a userId', () => {
+      it('Adds user to keycloak if they don\'t have a user_id', () => {
         return Promise.resolve()
           .then(() => this.invitation({ action: 'create', data }))
           .then(() => this.models.Profile.query())
@@ -82,11 +82,11 @@ describe('Invitation resolver', () => {
           });
       });
 
-      it('Doesn\'t add user to keycloak if they have a userId', () => {
+      it('Doesn\'t add user to keycloak if they have a user_id', () => {
         return Promise.resolve()
           .then(() => this.models.Profile.query()
             .findById('221d08a3-3f9b-4167-ae64-368271569952')
-            .patch({ userId: '345b1f16-1f00-49f7-bf47-6fdf237ca73f' })
+            .patch({ user_id: '345b1f16-1f00-49f7-bf47-6fdf237ca73f' })
           )
           .then(() => this.invitation({ action: 'create', data }))
           .then(() => this.models.Profile.query())
@@ -103,8 +103,8 @@ describe('Invitation resolver', () => {
           .then(() => this.models.Invitation.query())
           .then(invitations => {
             assert.deepEqual(invitations.length, 1);
-            assert.deepEqual(invitations[0].profileId, '221d08a3-3f9b-4167-ae64-368271569952');
-            assert.deepEqual(invitations[0].establishmentId, data.establishment);
+            assert.deepEqual(invitations[0].profile_id, '221d08a3-3f9b-4167-ae64-368271569952');
+            assert.deepEqual(invitations[0].establishment_id, data.establishment);
           });
       });
 
@@ -121,8 +121,8 @@ describe('Invitation resolver', () => {
     describe('New profile', () => {
       const data = {
         email: 'new@user.com',
-        firstName: 'Testy',
-        lastName: 'McTestface',
+        first_name: 'Testy',
+        last_name: 'McTestface',
         establishment: 8201,
         role: 'admin'
       };
@@ -146,8 +146,8 @@ describe('Invitation resolver', () => {
 
     beforeEach(() => {
       model = {
-        profileId: 'ec2160d0-1778-4891-ba44-6ff1d2df4c8c',
-        establishmentId: 8201,
+        profile_id: 'ec2160d0-1778-4891-ba44-6ff1d2df4c8c',
+        establishment_id: 8201,
         role: 'admin'
       };
       jwt.verify.resolves(model);
@@ -156,20 +156,20 @@ describe('Invitation resolver', () => {
         .then(() => this.models.Profile.query().insert([
           {
             id: 'ec2160d0-1778-4891-ba44-6ff1d2df4c8c',
-            firstName: 'Testy',
-            lastName: 'McTestface',
+            first_name: 'Testy',
+            last_name: 'McTestface',
             email: 'test@test.com'
           },
           {
             id: '221d08a3-3f9b-4167-ae64-368271569952',
-            firstName: 'Vincent',
-            lastName: 'Malloy',
+            first_name: 'Vincent',
+            last_name: 'Malloy',
             email: 'vincent@price.com'
           },
           {
             id: '345b1f16-1f00-49f7-bf47-6fdf237ca73f',
-            firstName: 'Sterling',
-            lastName: 'Archer',
+            first_name: 'Sterling',
+            last_name: 'Archer',
             email: 'sterling@archer.com'
           }
         ]))
@@ -182,16 +182,16 @@ describe('Invitation resolver', () => {
         }))
         .then(() => this.models.Invitation.query().returning('*').insert([
           {
-            establishmentId: 8201,
-            profileId: 'ec2160d0-1778-4891-ba44-6ff1d2df4c8c',
+            establishment_id: 8201,
+            profile_id: 'ec2160d0-1778-4891-ba44-6ff1d2df4c8c',
             role: 'admin'
           }, {
-            establishmentId: 8201,
-            profileId: '221d08a3-3f9b-4167-ae64-368271569952',
+            establishment_id: 8201,
+            profile_id: '221d08a3-3f9b-4167-ae64-368271569952',
             role: 'read'
           }, {
-            establishmentId: 8201,
-            profileId: '345b1f16-1f00-49f7-bf47-6fdf237ca73f',
+            establishment_id: 8201,
+            profile_id: '345b1f16-1f00-49f7-bf47-6fdf237ca73f',
             role: 'basic'
           }
         ]));
@@ -228,13 +228,13 @@ describe('Invitation resolver', () => {
       return Promise.resolve()
         .then(() => this.invitation({ ...data, data: { token: 'A TOKEN' } }))
         .then(() => this.models.Permission.query().where({
-          establishmentId: model.establishmentId,
-          profileId: model.profileId
+          establishment_id: model.establishment_id,
+          profile_id: model.profile_id
         }))
         .then(permissions => {
           assert.deepEqual(permissions.length, 1);
-          assert.deepEqual(permissions[0].profileId, model.profileId);
-          assert.deepEqual(permissions[0].establishmentId, model.establishmentId);
+          assert.deepEqual(permissions[0].profile_id, model.profile_id);
+          assert.deepEqual(permissions[0].establishment_id, model.establishment_id);
           assert.deepEqual(permissions[0].role, model.role);
         });
     });
@@ -242,16 +242,16 @@ describe('Invitation resolver', () => {
     it('deletes the invitation model', () => {
       return Promise.resolve()
         .then(() => this.models.Invitation.query().where({
-          establishmentId: model.establishmentId,
-          profileId: model.profileId
+          establishment_id: model.establishment_id,
+          profile_id: model.profile_id
         }))
         .then(invitations => {
           assert.deepEqual(invitations.length, 1);
         })
         .then(() => this.invitation({ ...data, data: { token: 'A TOKEN' } }))
         .then(() => this.models.Invitation.query().where({
-          establishmentId: model.establishmentId,
-          profileId: model.profileId
+          establishment_id: model.establishment_id,
+          profile_id: model.profile_id
         }))
         .then(invitations => {
           assert.deepEqual(invitations.length, 0);

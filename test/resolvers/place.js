@@ -13,7 +13,7 @@ describe('Place resolver', () => {
     return db.clean(this.models)
       .then(() => this.models.Establishment.query().insert({
         id: 8201,
-        name: 'Univerty of Croydon'
+        name: 'University of Croydon'
       }));
   });
 
@@ -78,7 +78,7 @@ describe('Place resolver', () => {
       return this.models.Place.query().insert([
         {
           id: '1f6f88e8-7beb-4499-9b1a-170fa58de494',
-          establishmentId: 8201,
+          establishment_id: 8201,
           name: 'A room',
           site: 'A site',
           suitability: ['SA'],
@@ -86,7 +86,7 @@ describe('Place resolver', () => {
         },
         {
           id: '453decad-b438-4f2c-8af1-71258afd6569',
-          establishmentId: 8201,
+          establishment_id: 8201,
           name: 'B room',
           site: 'B site',
           suitability: ['LA', 'DOG'],
@@ -94,7 +94,7 @@ describe('Place resolver', () => {
         },
         {
           id: 'd7e72073-c87c-4f43-ae14-5bea519e8114',
-          establishmentId: 8201,
+          establishment_id: 8201,
           name: 'A room',
           site: 'A site',
           suitability: ['SA', 'AQ'],
