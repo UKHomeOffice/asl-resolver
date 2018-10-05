@@ -15,8 +15,8 @@ describe('Profile resolver', () => {
       .then(() => this.models.Profile.query().insert([
         {
           id: ID,
-          firstName: 'Sterling',
-          lastName: 'Archer',
+          first_name: 'Sterling',
+          last_name: 'Archer',
           email: 'sterling@archer.com',
           telephone: '01234567890',
           dob: '1979-12-01'
@@ -42,8 +42,8 @@ describe('Profile resolver', () => {
       const opts = {
         action: 'update',
         data: {
-          firstName: 'Vincent',
-          lastName: 'Malloy'
+          first_name: 'Vincent',
+          last_name: 'Malloy'
         },
         id: ID
       };
@@ -52,8 +52,8 @@ describe('Profile resolver', () => {
         .then(() => this.models.Profile.query().findById(ID))
         .then(profile => {
           assert.ok(profile);
-          assert.deepEqual(profile.firstName, opts.data.firstName);
-          assert.deepEqual(profile.lastName, opts.data.lastName);
+          assert.deepEqual(profile.first_name, opts.data.first_name);
+          assert.deepEqual(profile.last_name, opts.data.last_name);
         });
     });
 
@@ -62,8 +62,8 @@ describe('Profile resolver', () => {
         const opts = {
           action: 'update',
           data: {
-            firstName: 'Vincent',
-            lastName: 'Malloy',
+            first_name: 'Vincent',
+            last_name: 'Malloy',
             comments: 'I am changing my name because...',
             someField: 'This will be ignored'
           },
