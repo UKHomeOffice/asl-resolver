@@ -57,7 +57,7 @@ describe('PIL resolver', () => {
         data: {
           establishment: 8201,
           profile: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
-          licence_number: 'AB-123',
+          licenceNumber: 'AB-123',
           procedures: ['A', 'B']
         }
       };
@@ -67,7 +67,7 @@ describe('PIL resolver', () => {
         .then(pils => pils[0])
         .then(pil => {
           assert.ok(pil);
-          assert.deepEqual(pil.licence_number, opts.data.licence_number);
+          assert.deepEqual(pil.licenceNumber, opts.data.licenceNumber);
           assert.deepEqual(pil.site, opts.data.site);
           assert.deepEqual(pil.procedures, opts.data.procedures);
         });
@@ -78,7 +78,7 @@ describe('PIL resolver', () => {
         action: 'create',
         data: {
           establishment: 8201,
-          licence_number: 'ABC-123'
+          licenceNumber: 'ABC-123'
           // no profile specified
         }
       };
@@ -92,9 +92,9 @@ describe('PIL resolver', () => {
     beforeEach(() => {
       return this.models.PIL.query().insert({
         id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
-        profile_id: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
-        establishment_id: 8201,
-        licence_number: 'AB-123',
+        profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+        establishmentId: 8201,
+        licenceNumber: 'AB-123',
         procedures: ['A', 'B']
       });
     });
