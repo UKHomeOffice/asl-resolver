@@ -39,7 +39,7 @@ describe('Place resolver', () => {
       const opts = {
         action: 'create',
         data: {
-          establishment: 8201,
+          establishmentId: 8201,
           name: 'A room',
           site: 'A site',
           suitability: JSON.stringify(['SA']),
@@ -63,7 +63,7 @@ describe('Place resolver', () => {
       const opts = {
         action: 'create',
         data: {
-          establishment: 8201,
+          establishmentId: 8201,
           name: 'A room'
         }
       };

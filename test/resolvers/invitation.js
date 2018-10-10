@@ -66,7 +66,7 @@ describe('Invitation resolver', () => {
         email: 'vincent@price.com',
         firstName: 'Vincent',
         lastName: 'Malloy',
-        establishment: 8201,
+        establishmentId: 8201,
         role: 'admin'
       };
 
@@ -104,7 +104,7 @@ describe('Invitation resolver', () => {
           .then(invitations => {
             assert.deepEqual(invitations.length, 1);
             assert.deepEqual(invitations[0].profileId, '221d08a3-3f9b-4167-ae64-368271569952');
-            assert.deepEqual(invitations[0].establishmentId, data.establishment);
+            assert.deepEqual(invitations[0].establishmentId, data.establishmentId);
           });
       });
 
@@ -123,7 +123,7 @@ describe('Invitation resolver', () => {
         email: 'new@user.com',
         firstName: 'Testy',
         lastName: 'McTestface',
-        establishment: 8201,
+        establishmentId: 8201,
         role: 'admin'
       };
 

@@ -55,8 +55,8 @@ describe('PIL resolver', () => {
       const opts = {
         action: 'create',
         data: {
-          establishment: 8201,
-          profile: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+          establishmentId: 8201,
+          profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
           licenceNumber: 'AB-123',
           procedures: ['A', 'B']
         }
@@ -77,7 +77,7 @@ describe('PIL resolver', () => {
       const opts = {
         action: 'create',
         data: {
-          establishment: 8201,
+          establishmentId: 8201,
           licenceNumber: 'ABC-123'
           // no profile specified
         }
