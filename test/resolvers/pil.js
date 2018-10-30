@@ -24,12 +24,7 @@ describe('PIL resolver', () => {
         address: '1 Some Road',
         postcode: 'A1 1AA',
         email: 'test1@example.com',
-        telephone: '01234567890',
-        trainingModules: [
-          {
-            id: 'c3032cc0-7dc7-40bc-be7e-97edc4ea1072'
-          }
-        ]
+        telephone: '01234567890'
       }));
   });
 
