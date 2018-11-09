@@ -1,7 +1,6 @@
 const assert = require('assert');
 const { invitation } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const keycloak = require('../helpers/keycloak');
 const jwt = require('../helpers/jwt');
 const emailer = require('../helpers/emailer');
 
@@ -10,15 +9,12 @@ describe('Invitation resolver', () => {
     this.models = db.init();
     this.invitation = invitation({
       jwt,
-      keycloak,
       emailer,
       models: this.models
     });
   });
 
   beforeEach(() => {
-    keycloak.ensureUser.resetHistory();
-    keycloak.setUserPassword.resetHistory();
     jwt.sign.resetHistory();
     jwt.verify.resetHistory();
     emailer.sendEmail.resetHistory();
