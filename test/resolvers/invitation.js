@@ -1,26 +1,21 @@
 const assert = require('assert');
 const { invitation } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const keycloak = require('../helpers/keycloak');
-const jwt = require('../helpers/jwt');
+const jwt = require('../../lib/jwt');
 const emailer = require('../helpers/emailer');
 
 describe('Invitation resolver', () => {
   before(() => {
     this.models = db.init();
+    this.jwt = jwt({ secret: 'hunter2' });
     this.invitation = invitation({
-      jwt,
-      keycloak,
+      jwt: this.jwt,
       emailer,
       models: this.models
     });
   });
 
   beforeEach(() => {
-    keycloak.ensureUser.resetHistory();
-    keycloak.setUserPassword.resetHistory();
-    jwt.sign.resetHistory();
-    jwt.verify.resetHistory();
     emailer.sendEmail.resetHistory();
 
     return db.clean(this.models);
@@ -51,97 +46,71 @@ describe('Invitation resolver', () => {
         name: 'University of life',
         country: 'england',
         address: '123 example street',
-        email: 'test@asd.com',
-        profiles: [{
-          id: '221d08a3-3f9b-4167-ae64-368271569952',
-          firstName: 'Vincent',
-          lastName: 'Malloy',
-          email: 'vincent@price.com'
-        }]
+        email: 'test@asd.com'
       });
     });
 
-    describe('Existing profile', () => {
-      const data = {
-        email: 'vincent@price.com',
-        firstName: 'Vincent',
-        lastName: 'Malloy',
-        establishmentId: 8201,
-        role: 'admin'
-      };
+    const data = {
+      email: 'test@example.com',
+      firstName: 'Vincent',
+      lastName: 'Malloy',
+      establishmentId: 8201,
+      role: 'admin'
+    };
 
-      it('Adds user to keycloak if they don\'t have a userId', () => {
-        return Promise.resolve()
-          .then(() => this.invitation({ action: 'create', data }))
-          .then(() => this.models.Profile.query())
-          .then(profiles => {
-            assert.deepEqual(profiles.length, 1);
-            assert.deepEqual(keycloak.ensureUser.callCount, 1);
-            assert.deepEqual(jwt.sign.callCount, 1);
-            assert(keycloak.ensureUser.calledWith(data));
-          });
-      });
-
-      it('Doesn\'t add user to keycloak if they have a userId', () => {
-        return Promise.resolve()
-          .then(() => this.models.Profile.query()
-            .findById('221d08a3-3f9b-4167-ae64-368271569952')
-            .patch({ userId: '345b1f16-1f00-49f7-bf47-6fdf237ca73f' })
-          )
-          .then(() => this.invitation({ action: 'create', data }))
-          .then(() => this.models.Profile.query())
-          .then(profiles => {
-            assert.deepEqual(profiles.length, 1);
-            assert.deepEqual(keycloak.ensureUser.callCount, 0);
-            assert.deepEqual(jwt.sign.callCount, 1);
-          });
-      });
-
-      it('Creates an invitation model', () => {
-        return Promise.resolve()
-          .then(() => this.invitation({ action: 'create', data }))
-          .then(() => this.models.Invitation.query())
-          .then(invitations => {
-            assert.deepEqual(invitations.length, 1);
-            assert.deepEqual(invitations[0].profileId, '221d08a3-3f9b-4167-ae64-368271569952');
-            assert.deepEqual(invitations[0].establishmentId, data.establishmentId);
-          });
-      });
-
-      it('Sends an email and passes the JWT', () => {
-        return Promise.resolve()
-          .then(() => this.invitation({ action: 'create', data }))
-          .then(() => {
-            assert.deepEqual(emailer.sendEmail.callCount, 1);
-            assert.deepEqual(emailer.sendEmail.args[0][0].token, 'A TOKEN');
-          });
-      });
+    it('creates an invitation model', () => {
+      return Promise.resolve()
+        .then(() => this.invitation({ action: 'create', data }))
+        .then(() => this.models.Invitation.query())
+        .then(invitations => {
+          assert.equal(invitations.length, 1, 'Invitation model exists in database');
+          assert.equal(invitations[0].email, 'test@example.com');
+          assert.equal(invitations[0].establishmentId, 8201);
+          assert.equal(invitations[0].role, 'admin');
+        });
     });
 
-    describe('New profile', () => {
-      const data = {
-        email: 'new@user.com',
-        firstName: 'Testy',
-        lastName: 'McTestface',
-        establishmentId: 8201,
-        role: 'admin'
-      };
-
-      it('Adds a new Profile model if user not found', () => {
-        return Promise.resolve()
-          .then(() => this.invitation({ action: 'create', data }))
-          .then(() => this.models.Profile.query())
-          .then(profiles => {
-            assert.deepEqual(profiles.length, 2);
-            assert.deepEqual(keycloak.ensureUser.callCount, 1);
-            assert.deepEqual(emailer.sendEmail.callCount, 1);
-            assert.deepEqual(emailer.sendEmail.args[0][0].token, 'A TOKEN');
-          });
-      });
+    it('creates a jwt token with email, establishment and role', () => {
+      return Promise.resolve()
+        .then(() => this.invitation({ action: 'create', data }))
+        .then(() => this.models.Invitation.query())
+        .then(invitations => {
+          const token = this.jwt.verify(invitations[0].token);
+          assert.equal(token.email, 'test@example.com');
+          assert.equal(token.establishmentId, 8201);
+          assert.equal(token.role, 'admin');
+        });
     });
+
+    it('updates invitation model if one already exists', () => {
+      return Promise.resolve()
+        .then(() => this.models.Invitation.query().insert({
+          id: 'ea54044f-79a2-49a9-a2e3-998e6206c3cf',
+          establishmentId: 8201,
+          token: 'abc123',
+          email: 'test@example.com',
+          role: 'admin'
+        }))
+        .then(() => this.invitation({ action: 'create', data }))
+        .then(() => this.models.Invitation.query())
+        .then(invitations => {
+          assert.equal(invitations.length, 1, 'Only one Invitation model exists in database');
+          assert.notEqual(invitations[0].token, 'abc123', 'Invitation token has been updated with new expiry');
+        });
+    });
+
+    it('sends email containing link to accept invitation', () => {
+      return Promise.resolve()
+        .then(() => this.invitation({ action: 'create', data }))
+        .then(invitations => {
+          assert.ok(emailer.sendEmail.calledOnce, 'One email has been sent');
+          assert.equal(emailer.sendEmail.lastCall.args[0].email, 'test@example.com');
+        });
+    });
+
   });
 
-  describe('Resolve', () => {
+  describe('Accept', () => {
     let model;
 
     beforeEach(() => {
@@ -150,7 +119,6 @@ describe('Invitation resolver', () => {
         establishmentId: 8201,
         role: 'admin'
       };
-      jwt.verify.resolves(model);
 
       return Promise.resolve()
         .then(() => this.models.Profile.query().insert([
@@ -182,51 +150,40 @@ describe('Invitation resolver', () => {
         }))
         .then(() => this.models.Invitation.query().returning('*').insert([
           {
+            id: 'ea54044f-79a2-49a9-a2e3-998e6206c3cf',
             establishmentId: 8201,
-            profileId: 'ec2160d0-1778-4891-ba44-6ff1d2df4c8c',
+            token: 'abc123',
+            email: 'test@example.com',
             role: 'admin'
           }, {
+            id: 'eb688b52-e690-43b7-a956-73bc11788b0f',
             establishmentId: 8201,
-            profileId: '221d08a3-3f9b-4167-ae64-368271569952',
+            token: 'def456',
+            email: 'test@example.com',
             role: 'read'
           }, {
+            id: 'cb484606-9318-4645-9894-8ab153d51e44',
             establishmentId: 8201,
-            profileId: '345b1f16-1f00-49f7-bf47-6fdf237ca73f',
+            token: 'ghi789',
+            email: 'test@example.com',
             role: 'basic'
           }
         ]));
     });
 
     const data = {
-      action: 'resolve'
+      action: 'accept'
     };
 
-    it('verifies the JWT token', () => {
-      return Promise.resolve()
-        .then(() => this.invitation({ ...data, data: { token: 'A TOKEN' } }))
-        .then(() => {
-          assert.deepEqual(jwt.verify.callCount, 1);
-          assert.deepEqual(keycloak.setUserPassword.callCount, 0);
-        });
-    });
-
-    it('verifies the JWT token', () => {
+    it('sets a permission model', () => {
       return Promise.resolve()
         .then(() => this.invitation({
           ...data,
           data: {
-            token: 'A TOKEN',
-            password: 'password123'
+            profileId: model.profileId,
+            id: 'ea54044f-79a2-49a9-a2e3-998e6206c3cf'
           }
         }))
-        .then(() => {
-          assert.deepEqual(keycloak.setUserPassword.callCount, 1);
-        });
-    });
-
-    it('sets a permission model', () => {
-      return Promise.resolve()
-        .then(() => this.invitation({ ...data, data: { token: 'A TOKEN' } }))
         .then(() => this.models.Permission.query().where({
           establishmentId: model.establishmentId,
           profileId: model.profileId
@@ -241,20 +198,20 @@ describe('Invitation resolver', () => {
 
     it('deletes the invitation model', () => {
       return Promise.resolve()
-        .then(() => this.models.Invitation.query().where({
-          establishmentId: model.establishmentId,
-          profileId: model.profileId
-        }))
-        .then(invitations => {
-          assert.deepEqual(invitations.length, 1);
+        .then(() => this.models.Invitation.query().findById('ea54044f-79a2-49a9-a2e3-998e6206c3cf'))
+        .then(invitation => {
+          assert.ok(invitation, 'Invitation exists in the database');
         })
-        .then(() => this.invitation({ ...data, data: { token: 'A TOKEN' } }))
-        .then(() => this.models.Invitation.query().where({
-          establishmentId: model.establishmentId,
-          profileId: model.profileId
+        .then(() => this.invitation({
+          ...data,
+          data: {
+            profileId: model.profileId,
+            id: 'ea54044f-79a2-49a9-a2e3-998e6206c3cf'
+          }
         }))
-        .then(invitations => {
-          assert.deepEqual(invitations.length, 0);
+        .then(() => this.models.Invitation.query().findById('ea54044f-79a2-49a9-a2e3-998e6206c3cf'))
+        .then(invitation => {
+          assert.ok(!invitation, 'Invitation has been removed from the database');
         });
     });
   });
