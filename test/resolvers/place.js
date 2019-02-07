@@ -3,6 +3,9 @@ const moment = require('moment');
 const { place } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
+const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
+const ESTABLISHMENT_ID = 8201;
+
 describe('Place resolver', () => {
   before(() => {
     this.models = db.init();
@@ -12,8 +15,19 @@ describe('Place resolver', () => {
   beforeEach(() => {
     return db.clean(this.models)
       .then(() => this.models.Establishment.query().insert({
-        id: 8201,
+        id: ESTABLISHMENT_ID,
         name: 'Univerty of Croydon'
+      }))
+      .then(() => this.models.Profile.query().insert({
+        id: PROFILE_ID,
+        firstName: 'Sterling',
+        lastName: 'Archer',
+        email: 'sterling@archer.com'
+      }))
+      .then(() => this.models.Role.query().insert({
+        establishmentId: ESTABLISHMENT_ID,
+        profileId: PROFILE_ID,
+        type: 'nacwo'
       }));
   });
 
@@ -43,7 +57,8 @@ describe('Place resolver', () => {
           name: 'A room',
           site: 'A site',
           suitability: JSON.stringify(['SA']),
-          holding: JSON.stringify(['NOH'])
+          holding: JSON.stringify(['NOH']),
+          nacwo: PROFILE_ID
         }
       };
       return Promise.resolve()
@@ -59,12 +74,13 @@ describe('Place resolver', () => {
         });
     });
 
-    it('can rejects an invalid place model', () => {
+    it('can reject an invalid place model', () => {
       const opts = {
         action: 'create',
         data: {
           establishmentId: 8201,
-          name: 'A room'
+          name: 'A room',
+          nacwo: PROFILE_ID
         }
       };
       return assert.rejects(() => {
