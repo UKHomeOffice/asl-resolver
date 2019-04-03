@@ -14,7 +14,8 @@ const tables = [
   'Certificate',
   'Exemption',
   'Profile',
-  'Establishment'
+  'Establishment',
+  'AsruEstablishment'
 ];
 
 module.exports = {
