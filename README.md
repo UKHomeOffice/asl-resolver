@@ -35,6 +35,10 @@ The following environment variables are required:
 * `SQS_ACCESS_KEY` - access key used to consume SQS
 * `SQS_SECRET` - secret used to consume SQS
 * `SQS_URL` - endpoint for SQS
+* `S3_REGION` - the region of the S3 instance to query
+* `S3_ACCESS_KEY` - access key used to query S3
+* `S3_SECRET` - secret used to query S3
+* `S3_BUCKET` - the S3 bucket name
 * `JWT_SECRET` - arbitrary string used to sign JWT tokens for invitations
 * `EMAILER_SERVICE` - url of `asl-emailer` instance used to send invitations
 * `REGISTER_SERVICE` - url of `asl-register` instance used to accept invitations
