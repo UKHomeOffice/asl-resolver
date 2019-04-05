@@ -26,6 +26,7 @@
     "@asl/schema": "^7.10.0",
     "@asl/service": "^6.1.5",
     "aws-sdk": "^2.270.1",
+    "deep-diff": "^1.0.2",
     "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.10",
     "moment": "^2.24.0",
