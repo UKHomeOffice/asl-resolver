@@ -108,6 +108,7 @@ describe('Project resolver', () => {
               '68d79bb1-3573-4402-ac08-7ac27dcbb39e',
               'ee871d64-cc87-470a-82d9-4a326c9c08dc'
             ].includes(version.id)) {
+              assert(version.deleted);
               assert(moment(version.deleted).isValid(), 'version was soft deleted');
             }
 
