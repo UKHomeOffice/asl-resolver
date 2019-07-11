@@ -165,8 +165,9 @@ describe('Place resolver', () => {
           .then(place => {
             assert.deepEqual(place, undefined);
           })
-          .then(() => this.models.Place.query())
+          .then(() => this.models.Place.queryWithDeleted().findById(opts.id))
           .then(place => {
+            assert(place.deleted);
             assert(moment(place.deleted).isValid());
           });
       });

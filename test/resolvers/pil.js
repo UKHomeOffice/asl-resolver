@@ -139,8 +139,9 @@ describe('PIL resolver', () => {
           .then(pil => {
             assert.deepEqual(pil, undefined);
           })
-          .then(() => this.models.PIL.query())
+          .then(() => this.models.PIL.queryWithDeleted().findById(opts.id))
           .then(pil => {
+            assert(pil.deleted);
             assert(moment(pil.deleted).isValid());
           });
       });
