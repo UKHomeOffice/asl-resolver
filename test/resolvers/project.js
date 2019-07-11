@@ -100,7 +100,7 @@ describe('Project resolver', () => {
       };
       return Promise.resolve()
         .then(() => this.project(opts))
-        .then(() => this.models.ProjectVersion.query())
+        .then(() => this.models.ProjectVersion.queryWithDeleted())
         .then(versions => {
           versions.map(version => {
             if ([
