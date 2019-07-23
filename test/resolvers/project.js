@@ -176,7 +176,7 @@ describe('Project resolver', () => {
         .then(() => this.models.Project.query())
         .then(projects => {
           assert(projects.length === 1, 'project not added');
-          assert(projects[0].title, data.title, 'title not added to project');
+          assert.equal(projects[0].title, data.title, 'title not added to project');
           return this.models.ProjectVersion.query().where({ projectId: projects[0].id })
             .then(versions => {
               assert(versions.length === 1, 'version not added');
