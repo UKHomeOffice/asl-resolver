@@ -277,7 +277,7 @@ describe('Project resolver', () => {
         });
     });
 
-    it('Updates active project ignoring expiry as not changed since granted', () => {
+    it('Updates expiry date if duration changed', () => {
       const opts = {
         action: 'grant',
         id: projectId2
