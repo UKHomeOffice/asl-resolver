@@ -23,3 +23,5 @@ app.on('error', error => {
 });
 
 app.start();
+
+console.log(`Listening to queue at ${config.sqs.url}`);
