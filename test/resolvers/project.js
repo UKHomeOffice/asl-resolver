@@ -184,56 +184,98 @@ describe('Project resolver', () => {
         });
     });
 
-    it('grants a new project updating the expiry date based on duration', () => {
-      const opts = {
-        action: 'grant',
-        id: projectId
-      };
-      const version = {
-        projectId,
-        status: 'submitted',
-        data: {
-          title: 'title of the newly granted project',
-          duration: {
-            years: 3,
-            months: 3
+    describe('duration', () => {
+      it('grants a new project updating the expiry date based on duration', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+        const version = {
+          projectId,
+          status: 'submitted',
+          data: {
+            title: 'title of the newly granted project',
+            duration: {
+              years: 3,
+              months: 3
+            }
           }
-        }
-      };
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then(project => {
-          const expiryDate = moment(project.issueDate).add(version.data.duration).toISOString();
-          assert.equal(project.expiryDate, expiryDate, 'expiry date was not set from duration');
-        });
-    });
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.project(opts))
+          .then(() => this.models.Project.query().findById(projectId))
+          .then(project => {
+            const expiryDate = moment(project.issueDate).add(version.data.duration).toISOString();
+            assert.equal(project.expiryDate, expiryDate, 'expiry date was not set from duration');
+          });
+      });
 
-    it('allows a maximum of 5 years from issue date', () => {
-      const opts = {
-        action: 'grant',
-        id: projectId
-      };
-      const version = {
-        projectId,
-        status: 'submitted',
-        data: {
-          title: 'title of the newly granted project',
-          duration: {
-            years: 7,
-            months: 6
+      it('allows a maximum of 5 years from issue date', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+        const version = {
+          projectId,
+          status: 'submitted',
+          data: {
+            title: 'title of the newly granted project',
+            duration: {
+              years: 7,
+              months: 6
+            }
           }
-        }
-      };
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then(project => {
-          const expiryDate = moment(project.issueDate).add({ years: 5, months: 0 }).toISOString();
-          assert.equal(project.expiryDate, expiryDate, 'maximum duration of 5 years not honoured');
-        });
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.project(opts))
+          .then(() => this.models.Project.query().findById(projectId))
+          .then(project => {
+            const expiryDate = moment(project.issueDate).add({ years: 5, months: 0 }).toISOString();
+            assert.equal(project.expiryDate, expiryDate, 'maximum duration of 5 years not honoured');
+          });
+      });
+
+      describe('validation', () => {
+        const tests = [
+          { expected: 60 },
+          { duration: {}, expected: 60 },
+          { duration: { years: 5 }, expected: 60 },
+          { duration: { years: 5, months: null }, expected: 60 },
+          { duration: { years: null, months: null }, expected: 60 },
+          { duration: { years: 0, months: 0 }, expected: 60 },
+          { duration: { years: 5, months: 6 }, expected: 60 },
+          { duration: { years: 10, months: 25 }, expected: 60 },
+          { duration: { years: 0, months: 25 }, expected: 60 },
+          { duration: { years: 2, months: 25 }, expected: 24 },
+          { duration: { years: 0, months: 3 }, expected: 3 }
+        ];
+
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+
+        const runTest = ({ duration, expected }, index) => {
+          const version = {
+            projectId,
+            status: 'submitted',
+            data: { duration }
+          };
+          it(`Testing expiryDate correctly set from duration - ${index + 1}`, () => {
+            return Promise.resolve()
+              .then(() => this.models.ProjectVersion.query().insert(version))
+              .then(() => this.project(opts))
+              .then(() => this.models.Project.query().findById(projectId))
+              .then(project => {
+                const diff = moment(project.expiryDate).diff(moment(project.issueDate), 'months');
+                assert.equal(diff, expected);
+              });
+          });
+        };
+        tests.forEach(runTest);
+      });
     });
 
     it('Updates active project ignoring expiry as not changed since granted', () => {
