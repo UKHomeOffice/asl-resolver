@@ -74,6 +74,31 @@ describe('Place resolver', () => {
         });
     });
 
+    it('can insert a place model with no NACWO', () => {
+      const opts = {
+        action: 'create',
+        data: {
+          establishmentId: 8201,
+          name: 'Another room',
+          site: 'Another site',
+          suitability: JSON.stringify(['SA']),
+          holding: JSON.stringify(['NOH']),
+          nacwo: ''
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.place(opts))
+        .then(() => this.models.Place.query())
+        .then(places => places[0])
+        .then(place => {
+          assert.ok(place);
+          assert.deepEqual(place.name, opts.data.name);
+          assert.deepEqual(place.site, opts.data.site);
+          assert.deepEqual(place.suitability, JSON.parse(opts.data.suitability));
+          assert.deepEqual(place.holding, JSON.parse(opts.data.holding));
+        });
+    });
+
     it('can reject an invalid place model', () => {
       const opts = {
         action: 'create',
