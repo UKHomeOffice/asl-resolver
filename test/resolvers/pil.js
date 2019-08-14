@@ -53,7 +53,9 @@ describe('PIL resolver', () => {
           establishmentId: 8201,
           profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
           licenceNumber: 'AB-123',
-          procedures: ['A', 'B']
+          procedures: ['A', 'B', 'D', 'F'],
+          notesCatD: 'Some notes for CatD',
+          notesCatF: 'Some notes for CatF'
         }
       };
       return Promise.resolve()
@@ -65,6 +67,8 @@ describe('PIL resolver', () => {
           assert.deepEqual(pil.licenceNumber, opts.data.licenceNumber);
           assert.deepEqual(pil.site, opts.data.site);
           assert.deepEqual(pil.procedures, opts.data.procedures);
+          assert.deepEqual(pil.notesCatD, opts.data.notesCatD);
+          assert.deepEqual(pil.notesCatF, opts.data.notesCatF);
         });
     });
 
