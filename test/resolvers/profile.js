@@ -40,6 +40,67 @@ describe('Profile resolver', () => {
     });
   });
 
+  describe('Create', () => {
+    it('can create a new profile', () => {
+      const params = {
+        action: 'create',
+        data: {
+          firstName: 'Robert',
+          lastName: 'Fryer',
+          email: 'rob.fryer@example.com',
+          userId: '12345'
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.profile(params))
+        .then(profile => profile.id)
+        .then(profileId => this.models.Profile.query().findById(profileId))
+        .then(profile => {
+          assert.ok(profile);
+          assert.deepEqual(profile.firstName, params.data.firstName);
+          assert.deepEqual(profile.lastName, params.data.lastName);
+          assert.deepEqual(profile.userId, params.data.userId);
+        });
+    });
+
+    it('updates the userId if it finds an existing profile', () => {
+      const params = {
+        action: 'create',
+        data: {
+          firstName: 'Robert',
+          lastName: 'Fryer',
+          email: 'rob.fryer@example.com',
+          userId: '12345'
+        }
+      };
+
+      const params2 = {
+        action: 'create',
+        data: {
+          firstName: 'Robert',
+          lastName: 'Fryer',
+          email: 'ROB.FRYER@EXAMPLE.COM',
+          userId: '54321'
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.profile(params))
+        .then(newProfile => {
+          return Promise.resolve()
+            .then(() => this.profile(params2))
+            .then(() => this.models.Profile.query().findById(newProfile.id))
+            .then(profile => {
+              assert.ok(profile);
+              assert.deepEqual(profile.firstName, params.data.firstName);
+              assert.deepEqual(profile.lastName, params.data.lastName);
+              assert.deepEqual(profile.userId, params2.data.userId);
+            });
+        });
+    });
+  });
+
   describe('Merge', () => {
     beforeEach(() => {
       return Promise.resolve()
