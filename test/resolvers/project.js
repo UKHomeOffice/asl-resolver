@@ -419,4 +419,40 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('revoke', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Active project to be revoked',
+            issueDate: new Date().toISOString(),
+            expiryDate: moment(new Date()).add(5, 'years').toISOString(),
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]));
+    });
+
+    it('can revoke an active project', () => {
+      const opts = {
+        action: 'revoke',
+        id: projectId,
+        data: {
+          establishmentId,
+          licenceHolderId: profileId
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          assert.equal(project.status, 'revoked', 'project status was not set to revoked');
+          assert.ok(project.revocationDate && moment(project.revocationDate).isValid(), 'revocation date was not set');
+        });
+    });
+  });
+
 });
