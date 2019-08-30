@@ -126,7 +126,7 @@ describe('Project expiry', () => {
   it('does not expire projects expiring in the future', () => {
     return this.expire()
       .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'inactive-expires-null' })
+        this.models.Project.query().findOne({ licenceNumber: 'active-expires-plus-1-week' })
           .then(project => {
             assert.notEqual(project.status, 'expired', 'project status should not be expired');
           });
@@ -136,7 +136,7 @@ describe('Project expiry', () => {
   it('does not expire inactive (draft) projects', () => {
     return this.expire()
       .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'active-expires-plus-1-week' })
+        this.models.Project.query().findOne({ licenceNumber: 'inactive-expires-null' })
           .then(project => {
             assert.notEqual(project.status, 'expired', 'project status should not be expired');
           });
