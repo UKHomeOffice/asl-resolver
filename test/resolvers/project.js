@@ -419,6 +419,101 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('delete-amendments', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'inactive',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          },
+          {
+            id: projectId2,
+            status: 'active',
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            issueDate: new Date().toISOString(),
+            expiryDate: moment(new Date()).add(5, 'years').toISOString()
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            projectId,
+            status: 'submitted',
+            createdAt: new Date().toISOString()
+          },
+          {
+            projectId,
+            status: 'submitted',
+            createdAt: moment().subtract(5, 'minutes').toISOString()
+          },
+          {
+            projectId,
+            status: 'withdrawn',
+            createdAt: moment().subtract(10, 'minutes').toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'submitted',
+            createdAt: new Date().toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'submitted',
+            createdAt: moment().subtract(5, 'minutes').toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'granted',
+            createdAt: moment().subtract(10, 'minutes').toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'withdrawn',
+            createdAt: moment().subtract(15, 'minutes').toISOString()
+          }
+        ]));
+    });
+
+    it('soft deletes project and all versions if project is a draft', () => {
+      const opts = {
+        action: 'delete-amendments',
+        id: projectId
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          assert.equal(project, null);
+        })
+        .then(() => this.models.ProjectVersion.query().where({ projectId }))
+        .then(versions => {
+          assert.equal(versions.length, 0);
+        });
+    });
+
+    it('soft deletes all versions since the most recent granted version if not a draft', () => {
+      const opts = {
+        action: 'delete-amendments',
+        id: projectId2
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId2))
+        .then(project => {
+          assert.ok(project);
+        })
+        .then(() => this.models.ProjectVersion.query().where({ projectId: projectId2 }))
+        .then(versions => {
+          assert.equal(versions.length, 2);
+        });
+    });
+  });
+
   describe('revoke', () => {
     beforeEach(() => {
       return Promise.resolve()
