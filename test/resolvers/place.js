@@ -6,6 +6,11 @@ const db = require('../helpers/db');
 const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
 const ESTABLISHMENT_ID = 8201;
 
+const nowish = (a, b, n = 3) => {
+  const diff = moment(a).diff(b, 'seconds');
+  assert.ok(Math.abs(diff) < n, `${a} should be within ${n} seconds of ${b}`);
+};
+
 describe('Place resolver', () => {
   before(() => {
     this.models = db.init();
@@ -16,7 +21,8 @@ describe('Place resolver', () => {
     return db.clean(this.models)
       .then(() => this.models.Establishment.query().insert({
         id: ESTABLISHMENT_ID,
-        name: 'Univerty of Croydon'
+        name: 'Univerty of Croydon',
+        updatedAt: '2019-01-01T10:38:43.666Z'
       }))
       .then(() => this.models.Profile.query().insert({
         id: PROFILE_ID,
@@ -112,6 +118,27 @@ describe('Place resolver', () => {
         return this.place(opts);
       }, { name: 'ValidationError' });
     });
+
+    it('updates the establishment record', () => {
+      const opts = {
+        action: 'create',
+        data: {
+          establishmentId: 8201,
+          name: 'A room',
+          site: 'A site',
+          suitability: JSON.stringify(['SA']),
+          holding: JSON.stringify(['NOH']),
+          nacwo: PROFILE_ID
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.place(opts))
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.ok(establishment);
+          nowish(establishment.updatedAt, new Date().toISOString());
+        });
+    });
   });
 
   describe('with existing', () => {
@@ -176,6 +203,23 @@ describe('Place resolver', () => {
           message: /id is required on update/
         });
       });
+
+      it('updates the establishment record', () => {
+        const opts = {
+          action: 'update',
+          id: 'd7e72073-c87c-4f43-ae14-5bea519e8114',
+          data: {
+            suitability: JSON.stringify(['AQ', 'AV'])
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.place(opts))
+          .then(() => this.models.Establishment.query().findById(8201))
+          .then(establishment => {
+            assert.ok(establishment);
+            nowish(establishment.updatedAt, new Date().toISOString());
+          });
+      });
     });
 
     describe('Delete', () => {
@@ -207,6 +251,20 @@ describe('Place resolver', () => {
           name: 'Error',
           message: /id is required on delete/
         });
+      });
+
+      it('updates the establishment record', () => {
+        const opts = {
+          action: 'delete',
+          id: '453decad-b438-4f2c-8af1-71258afd6569'
+        };
+        return Promise.resolve()
+          .then(() => this.place(opts))
+          .then(() => this.models.Establishment.query().findById(8201))
+          .then(establishment => {
+            assert.ok(establishment);
+            nowish(establishment.updatedAt, new Date().toISOString());
+          });
       });
     });
   });
