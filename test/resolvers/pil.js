@@ -164,4 +164,60 @@ describe('PIL resolver', () => {
     });
   });
 
+  describe('Grant', () => {
+    it('can grant a pil', () => {
+      return this.models.PIL.query().insert({
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+        establishmentId: 8201,
+        procedures: ['A']
+      }).then(() => {
+        const opts = {
+          action: 'grant',
+          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+          data: {}
+        };
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.equal(pil.status, 'active', 'pil is active');
+            assert(pil.licenceNumber, 'pil has a licence number');
+            assert(pil.issueDate, 'pil has an issue date');
+            assert(moment(pil.issueDate).isValid(), 'pil issue date is a valid date');
+          });
+      });
+    });
+
+    it('can re-grant a pil with a new issue date', () => {
+      const originalIssueDate = moment('2019-10-01 12:00:00');
+
+      return this.models.PIL.query().insert({
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+        establishmentId: 8201,
+        status: 'revoked',
+        issueDate: originalIssueDate.toISOString(),
+        revocationDate: originalIssueDate.add(1, 'day').toISOString(),
+        licenceNumber: 'XYZ-987',
+        procedures: ['A']
+      }).then(() => {
+        const opts = {
+          action: 'grant',
+          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+          data: {}
+        };
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.equal(pil.status, 'active', 'pil is active');
+            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number has not changed');
+            assert(pil.issueDate, 'pil has an issue date');
+            assert(originalIssueDate.isBefore(pil.issueDate), 'pil issue date has been updated to re-grant date');
+          });
+      });
+    });
+  });
+
 });
