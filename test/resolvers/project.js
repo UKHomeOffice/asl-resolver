@@ -184,6 +184,38 @@ describe('Project resolver', () => {
         });
     });
 
+    it('removes soft deleted protocols', () => {
+      const PROTOCOL_1_ID = '0ac6500f-b618-4632-a00f-a01c5ee35e30';
+      const PROTOCOL_2_ID = 'a5d76be3-f31d-42c2-9578-212be1d7a691';
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const version = {
+        projectId,
+        status: 'submitted',
+        data: {
+          protocols: [
+            {
+              id: PROTOCOL_1_ID
+            },
+            {
+              id: PROTOCOL_2_ID,
+              deleted: true
+            }
+          ]
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId).eager('version'))
+        .then(project => {
+          assert.equal(project.version[0].data.protocols.length, 1, 'Expected protocol to be removed');
+        });
+    });
+
     describe('duration', () => {
       it('grants a new project updating the expiry date based on duration', () => {
         const opts = {
