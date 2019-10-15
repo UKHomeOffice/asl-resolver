@@ -9,6 +9,10 @@ const projectId2 = 'd01588c4-cdca-461f-95de-f2bc2b95c9b0';
 
 const establishmentId = 8201;
 
+const isNowish = (date) => {
+  return moment(date).isBetween(moment().subtract(5, 'seconds'), moment().add(5, 'seconds'));
+};
+
 describe('Project resolver', () => {
 
   before(() => {
@@ -140,7 +144,9 @@ describe('Project resolver', () => {
             status: 'inactive',
             title: 'New project',
             establishmentId: 8201,
-            licenceHolderId: profileId
+            licenceHolderId: profileId,
+            createdAt: new Date('2019-07-11').toISOString(),
+            updatedAt: new Date('2019-07-11').toISOString()
           },
           {
             id: projectId2,
@@ -149,7 +155,9 @@ describe('Project resolver', () => {
             issueDate: new Date('2019-07-11').toISOString(),
             expiryDate: new Date('2022-07-11').toISOString(),
             establishmentId: 8201,
-            licenceHolderId: profileId
+            licenceHolderId: profileId,
+            createdAt: new Date('2019-07-11').toISOString(),
+            updatedAt: new Date('2019-07-11').toISOString()
           }
         ]));
     });
@@ -389,6 +397,52 @@ describe('Project resolver', () => {
             .then(project => {
               const expiryDate = moment(previous.issueDate).add(versions[1].data.duration).toISOString();
               assert.equal(project.expiryDate, expiryDate, 'Expiry date not updated');
+            });
+        });
+    });
+
+    it('updates the amendedDate if an amendment is granted', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId2
+      };
+      const versions = [
+        {
+          projectId: projectId2,
+          status: 'granted',
+          data: {
+            title: 'New title for updated project',
+            duration: {
+              years: 5,
+              months: 0
+            }
+          },
+          createdAt: new Date('2019-07-11').toISOString(),
+          updatedAt: new Date('2019-07-11').toISOString()
+        },
+        {
+          projectId: projectId2,
+          status: 'submitted',
+          data: {
+            duration: {
+              years: 5,
+              months: 0
+            }
+          },
+          createdAt: new Date('2019-10-11').toISOString(),
+          updatedAt: new Date('2019-10-11').toISOString()
+        }
+      ];
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(versions))
+        .then(() => this.models.Project.query().findById(projectId2))
+        .then(previous => {
+          return Promise.resolve()
+            .then(() => this.project(opts))
+            .then(() => this.models.Project.query().findById(projectId2))
+            .then(project => {
+              assert(project.amendedDate, 'amendment date was set');
+              assert(isNowish(project.amendedDate), 'the amended date is set to the granted time');
             });
         });
     });
