@@ -446,6 +446,38 @@ describe('Project resolver', () => {
             });
         });
     });
+
+    it('does not set the amendedDate if there is no previous granted version', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId2
+      };
+      const versions = [
+        {
+          projectId: projectId2,
+          status: 'submitted',
+          data: {
+            duration: {
+              years: 5,
+              months: 0
+            }
+          },
+          createdAt: new Date('2019-10-11').toISOString(),
+          updatedAt: new Date('2019-10-11').toISOString()
+        }
+      ];
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(versions))
+        .then(() => this.models.Project.query().findById(projectId2))
+        .then(previous => {
+          return Promise.resolve()
+            .then(() => this.project(opts))
+            .then(() => this.models.Project.query().findById(projectId2))
+            .then(project => {
+              assert.equal(project.amendedDate, null, 'amendment date was not set');
+            });
+        });
+    });
   });
 
   describe('create', () => {
