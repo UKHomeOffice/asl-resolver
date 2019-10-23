@@ -25,5 +25,13 @@ module.exports = {
   emailer: {
     host: process.env.EMAILER_SERVICE,
     registerService: process.env.REGISTER_SERVICE
+  },
+  auth: {
+    realm: process.env.KEYCLOAK_REALM,
+    url: process.env.KEYCLOAK_URL,
+    client: process.env.KEYCLOAK_CLIENT,
+    secret: process.env.KEYCLOAK_SECRET,
+    adminUsername: process.env.KEYCLOAK_USERNAME,
+    adminPassword: process.env.KEYCLOAK_PASSWORD
   }
 };
