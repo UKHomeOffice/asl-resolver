@@ -2,7 +2,11 @@ const Consumer = require('sqs-consumer');
 const AWS = require('aws-sdk');
 const config = require('./config');
 
-const handleMessage = require('./lib/worker')(config);
+const Logger = require('./lib/utils/logger');
+
+const logger = Logger(config);
+
+const handleMessage = require('./lib/worker')({ ...config, logger });
 
 const sqs = new AWS.SQS({
   region: config.sqs.region,
@@ -17,11 +21,11 @@ const app = Consumer.create({
 });
 
 app.on('error', error => {
-  console.error(error.message);
+  logger.error(error.message);
   app.stop();
   setTimeout(() => app.start(), 1000);
 });
 
 app.start();
 
-console.log(`Listening to queue at ${config.sqs.url}`);
+logger.info(`Listening to queue at ${config.sqs.url}`);

@@ -1,4 +1,5 @@
 module.exports = {
+  logLevel: process.env.LOG_LEVEL || 'info',
   sqs: {
     region: process.env.SQS_REGION,
     accessKey: process.env.SQS_ACCESS_KEY,
