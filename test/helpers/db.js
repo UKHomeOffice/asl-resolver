@@ -8,6 +8,7 @@ const tables = [
   'Invitation',
   'Permission',
   'Authorisation',
+  'PilTransfer',
   'PIL',
   'Place',
   'Role',

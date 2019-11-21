@@ -11,10 +11,16 @@ describe('PIL resolver', () => {
 
   beforeEach(() => {
     return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
-        id: 8201,
-        name: 'Univerty of Croydon'
-      }))
+      .then(() => this.models.Establishment.query().insert([
+        {
+          id: 8201,
+          name: 'Univerty of Croydon'
+        },
+        {
+          id: 8202,
+          name: 'Marvell Pharma'
+        }
+      ]))
       .then(() => this.models.Profile.query().insertGraph({
         id: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
         userId: 'abc123',
@@ -160,6 +166,34 @@ describe('PIL resolver', () => {
           name: 'Error',
           message: /id is required on delete/
         });
+      });
+    });
+
+    describe('Transfer', () => {
+      it('can transfer a PIL to a new establishment', () => {
+        const opts = {
+          action: 'transfer',
+          id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
+          data: {
+            establishment: {
+              from: { id: 8201, name: 'University of Croydon' },
+              to: { id: 8202, name: 'Marvell Pharma' }
+            }
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.equal(pil.establishmentId, opts.data.establishment.to.id);
+          })
+          .then(() => this.models.PilTransfer.query().where({ pilId: opts.id }))
+          .then(transfers => {
+            assert(transfers.length === 1);
+            assert(transfers[0].pilId === opts.id);
+            assert(transfers[0].fromEstablishmentId === opts.data.establishment.from.id);
+            assert(transfers[0].toEstablishmentId === opts.data.establishment.to.id);
+          });
       });
     });
   });
