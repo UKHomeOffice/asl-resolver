@@ -2,6 +2,7 @@ const assert = require('assert');
 const moment = require('moment');
 const db = require('../helpers/db');
 const expireTask = require('../../lib/tasks/expire');
+const Logger = require('../../lib/utils/logger');
 
 const establishmentId = 8201;
 const profileId = 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9';
@@ -9,7 +10,7 @@ const profileId = 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9';
 describe('Project expiry', () => {
   before(() => {
     this.models = db.init();
-    this.expire = expireTask(this.models);
+    this.expire = expireTask(this.models, Logger({ logLevel: 'silent' }));
   });
 
   beforeEach(() => {
