@@ -5,6 +5,7 @@ const db = require('../helpers/db');
 
 const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
 const ROLE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08c';
+const HOLC_ROLE_ID = '35a51aed-d489-4d73-a1fe-599947beb72e';
 const ESTABLISHMENT_ID = 8201;
 
 const nowish = (a, b, n = 3) => {
@@ -31,12 +32,20 @@ describe('Role resolver', () => {
         lastName: 'Archer',
         email: 'sterling@archer.com'
       }))
-      .then(() => this.models.Role.query().insert({
-        id: ROLE_ID,
-        establishmentId: ESTABLISHMENT_ID,
-        profileId: PROFILE_ID,
-        type: 'nacwo'
-      }));
+      .then(() => this.models.Role.query().insert([
+        {
+          id: ROLE_ID,
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID,
+          type: 'nacwo'
+        },
+        {
+          id: HOLC_ROLE_ID,
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID,
+          type: 'holc'
+        }
+      ]));
   });
 
   afterEach(() => {
@@ -75,6 +84,30 @@ describe('Role resolver', () => {
           nowish(establishment.updatedAt, new Date().toISOString());
         });
     });
+
+    it('doesn\'t update the establishment record if a HOLC is assigned', () => {
+      let updatedAt;
+      const opts = {
+        action: 'create',
+        data: {
+          establishmentId: 8201,
+          profileId: PROFILE_ID,
+          type: 'holc'
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          updatedAt = establishment.updatedAt;
+        })
+        .then(() => this.role(opts))
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.ok(establishment);
+          assert.equal(establishment.updatedAt, updatedAt);
+        });
+    });
   });
 
   describe('Delete', () => {
@@ -102,6 +135,30 @@ describe('Role resolver', () => {
         .then(establishment => {
           assert.ok(establishment);
           nowish(establishment.updatedAt, new Date().toISOString());
+        });
+    });
+
+    it('doesn\'t update the establishment record if a HOLC is removed', () => {
+      let updatedAt;
+      const opts = {
+        action: 'delete',
+        id: HOLC_ROLE_ID,
+        data: {
+          establishmentId: 8201,
+          profileId: PROFILE_ID
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          updatedAt = establishment.updatedAt;
+        })
+        .then(() => this.role(opts))
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.ok(establishment);
+          assert.equal(establishment.updatedAt, updatedAt);
         });
     });
   });
