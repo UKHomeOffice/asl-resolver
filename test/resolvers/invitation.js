@@ -4,6 +4,8 @@ const db = require('../helpers/db');
 const jwt = require('../../lib/jwt');
 const emailer = require('../helpers/emailer');
 
+const INVITATION_ID = 'e7296c40-6942-49fa-b695-7ea16b90f037';
+
 describe('Invitation resolver', () => {
   before(() => {
     this.models = db.init();
@@ -13,12 +15,20 @@ describe('Invitation resolver', () => {
       emailer,
       models: this.models
     });
+
   });
 
   beforeEach(() => {
     emailer.sendEmail.resetHistory();
 
-    return db.clean(this.models);
+    return db.clean(this.models)
+      .then(() => this.models.Establishment.query().insert({
+        id: 8201,
+        name: 'University of life',
+        country: 'england',
+        address: '123 example street',
+        email: 'test@asd.com'
+      }));
   });
 
   afterEach(() => {
@@ -40,16 +50,6 @@ describe('Invitation resolver', () => {
   });
 
   describe('Create', () => {
-    beforeEach(() => {
-      return this.models.Establishment.query().insertGraph({
-        id: 8201,
-        name: 'University of life',
-        country: 'england',
-        address: '123 example street',
-        email: 'test@asd.com'
-      });
-    });
-
     const data = {
       email: 'test@example.com',
       firstName: 'Vincent',
@@ -99,6 +99,23 @@ describe('Invitation resolver', () => {
         });
     });
 
+    it('Undeletes invitation model if deleted exists', () => {
+      return Promise.resolve()
+        .then(() => this.models.Invitation.query().insert({
+          establishmentId: 8201,
+          token: 'abc123',
+          email: 'test@example.com',
+          role: 'admin',
+          deleted: (new Date()).toISOString()
+        }))
+        .then(() => this.invitation({ action: 'create', data }))
+        .then(() => this.models.Invitation.query())
+        .then(invitations => {
+          assert.equal(invitations.length, 1, 'Only one Invitation model exists in database');
+          assert.notEqual(invitations[0].token, 'abc123', 'Invitation token has been updated with new expiry');
+        });
+    });
+
     it('sends email containing link to accept invitation', () => {
       return Promise.resolve()
         .then(() => this.invitation({ action: 'create', data }))
@@ -121,6 +138,7 @@ describe('Invitation resolver', () => {
       };
 
       return Promise.resolve()
+        .then(() => db.clean(this.models))
         .then(() => this.models.Profile.query().insert([
           {
             id: 'ec2160d0-1778-4891-ba44-6ff1d2df4c8c',
@@ -213,6 +231,69 @@ describe('Invitation resolver', () => {
         .then(invitation => {
           assert.ok(!invitation, 'Invitation has been removed from the database');
         });
+    });
+  });
+
+  describe('cancel, resend & delete', () => {
+    beforeEach(() => {
+      return this.models.Invitation.query().insert({
+        id: INVITATION_ID,
+        establishmentId: 8201,
+        token: 'abc123',
+        email: 'testy@mctestface.com',
+        role: 'admin'
+      });
+    });
+
+    describe('cancel', () => {
+      it('sets the token to null', () => {
+        const params = {
+          action: 'cancel',
+          id: INVITATION_ID
+        };
+        return Promise.resolve()
+          .then(() => this.invitation(params))
+          .then(() => this.models.Invitation.query().findById(INVITATION_ID))
+          .then(invitation => {
+            assert.equal(invitation.token, null);
+          });
+      });
+    });
+
+    describe('delete', () => {
+      it('soft deletes the invitation', () => {
+        const params = {
+          action: 'delete',
+          id: INVITATION_ID
+        };
+        return Promise.resolve()
+          .then(() => this.invitation(params))
+          .then(() => this.models.Invitation.queryWithDeleted().findById(INVITATION_ID))
+          .then(invitation => {
+            assert.ok(invitation.deleted);
+          });
+      });
+    });
+
+    describe('resend', () => {
+      beforeEach(() => {
+        return this.models.Invitation.query().findById(INVITATION_ID).patch({ token: null });
+      });
+
+      it('updates the token and resends the email', () => {
+        const params = {
+          action: 'resend',
+          id: INVITATION_ID
+        };
+        return Promise.resolve()
+          .then(() => this.invitation(params))
+          .then(() => this.models.Invitation.query().findById(INVITATION_ID))
+          .then(invitation => {
+            assert.ok(invitation.token);
+            assert.ok(emailer.sendEmail.calledOnce, 'One email has been sent');
+            assert.equal(emailer.sendEmail.lastCall.args[0].email, 'testy@mctestface.com');
+          });
+      });
     });
   });
 });
