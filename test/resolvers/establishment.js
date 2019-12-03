@@ -1,4 +1,5 @@
 const assert = require('assert');
+const moment = require('moment');
 const { establishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
@@ -41,6 +42,34 @@ describe('Establishment resolver', () => {
           assert.ok(establishment);
           assert.deepEqual(establishment.name, opts.data.name);
           assert.deepEqual(establishment.status, 'inactive');
+        });
+    });
+  });
+
+  describe('Grant', () => {
+    it('can grant a licence', () => {
+      return this.models.Establishment.query().insert({
+        id: 101,
+        name: 'Research 101',
+        status: 'inactive'
+      })
+        .then(() => {
+          const opts = {
+            id: 101,
+            action: 'grant',
+            data: {}
+          };
+
+          return Promise.resolve()
+            .then(() => this.establishment(opts))
+            .then(() => this.models.Establishment.query())
+            .then(establishments => establishments[0])
+            .then(establishment => {
+              assert.ok(establishment.licenceNumber, 'has a generated licence number');
+              assert.deepEqual(establishment.status, 'active', 'status has been changed to active');
+              assert(establishment.issueDate, 'has an issue date');
+              assert(moment(establishment.issueDate).isValid(), 'issue date is a valid date');
+            });
         });
     });
   });
