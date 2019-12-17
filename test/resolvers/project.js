@@ -224,6 +224,77 @@ describe('Project resolver', () => {
         });
     });
 
+    it('resolves if project version is already granted', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const version = {
+        projectId,
+        status: 'granted'
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts));
+    });
+
+    it('does not touch old submitted versions if there is a more recent granted version', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const versions = [
+        {
+          projectId,
+          status: 'submitted',
+          data: {},
+          createdAt: new Date('2019-12-15').toISOString()
+        },
+        {
+          projectId,
+          status: 'granted',
+          data: {},
+          createdAt: new Date('2019-12-16').toISOString()
+        }
+      ];
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(versions))
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().where({ projectId }).orderBy('createdAt', 'desc'))
+        .then(versions => {
+          assert.deepEqual(versions.map(v => v.status), ['granted', 'submitted']);
+        });
+    });
+
+    it('throws if latest version is a draft', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const versions = [
+        {
+          projectId,
+          status: 'submitted',
+          data: {},
+          createdAt: new Date('2019-12-15').toISOString()
+        },
+        {
+          projectId,
+          status: 'draft',
+          data: {},
+          createdAt: new Date('2019-12-16').toISOString()
+        }
+      ];
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(versions))
+        .then(() => {
+          assert.rejects(() => this.project(opts));
+        });
+    });
+
     describe('duration', () => {
       it('grants a new project updating the expiry date based on duration', () => {
         const opts = {
@@ -333,7 +404,8 @@ describe('Project resolver', () => {
               years: 5,
               months: 0
             }
-          }
+          },
+          createdAt: new Date('2019-12-17').toISOString()
         },
         {
           projectId: projectId2,
@@ -343,7 +415,8 @@ describe('Project resolver', () => {
               years: 5,
               months: 0
             }
-          }
+          },
+          createdAt: new Date('2019-12-18').toISOString()
         }
       ];
       return Promise.resolve()
@@ -374,7 +447,8 @@ describe('Project resolver', () => {
               years: 3,
               months: 0
             }
-          }
+          },
+          createdAt: new Date('2019-12-17').toISOString()
         },
         {
           projectId: projectId2,
@@ -384,7 +458,8 @@ describe('Project resolver', () => {
               years: 5,
               months: 0
             }
-          }
+          },
+          createdAt: new Date('2019-12-18').toISOString()
         }
       ];
       return Promise.resolve()
@@ -496,7 +571,7 @@ describe('Project resolver', () => {
           assert.equal(projects.length, 1, '1 project exists in table');
           return this.models.ProjectVersion.query().where({ projectId: projects[0].id })
             .then(versions => {
-              assert(versions.length === 1, 'version not added');
+              assert.equal(versions.length, 1, 'version not added');
               assert.deepEqual(versions[0].data, null, 'empty version not added');
             });
         });
