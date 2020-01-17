@@ -776,7 +776,7 @@ describe('Project resolver', () => {
 
     it('can change the issue date of a project', () => {
       const newIssueDate = new Date('2018-08-15').toISOString();
-      const expectedExpiryDate = moment(newIssueDate).add(5, 'years').toISOString();
+      const expectedExpiryDate = new Date('2023-08-15').toISOString();
 
       const opts = {
         action: 'update-issue-date',
