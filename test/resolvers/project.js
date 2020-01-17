@@ -743,4 +743,57 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('update-issue-date', () => {
+    beforeEach(() => {
+      const originalIssueDate = new Date('2020-01-17').toISOString();
+      const originalExpiryDate = new Date('2025-01-17').toISOString();
+      const duration = { years: 5, months: 0 };
+
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Active project wrong issue date',
+            issueDate: originalIssueDate,
+            expiryDate: originalExpiryDate,
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            id: '574266e5-ef34-4e34-bf75-7b6201357e75',
+            projectId,
+            data: {
+              duration
+            },
+            status: 'granted',
+            createdAt: originalIssueDate
+          }
+        ]));
+    });
+
+    it('can change the issue date of a project', () => {
+      const newIssueDate = new Date('2018-08-15').toISOString();
+      const expectedExpiryDate = moment(newIssueDate).add(5, 'years').toISOString();
+
+      const opts = {
+        action: 'update-issue-date',
+        id: projectId,
+        data: {
+          issueDate: newIssueDate
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          assert.equal(project.issueDate, newIssueDate, 'issue date was updated correctly');
+          assert.equal(project.expiryDate, expectedExpiryDate, 'expiry date was updated correctly');
+        });
+    });
+  });
+
 });
