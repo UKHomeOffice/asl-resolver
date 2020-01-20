@@ -3,6 +3,28 @@ const moment = require('moment');
 const { pil } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
+const PILH = {
+  id: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+  userId: 'abc123',
+  title: 'Dr',
+  firstName: 'Linford',
+  lastName: 'Christie',
+  address: '1 Some Road',
+  postcode: 'A1 1AA',
+  email: 'test1@example.com',
+  telephone: '01234567890'
+};
+
+const LICENSING = {
+  id: 'a942ffc7-e7ca-4d76-a001-0b5048a057d2',
+  firstName: 'Li Sen',
+  lastName: 'Xing',
+  email: 'lisenxing@example.com',
+  asru: [{ id: 8201 }],
+  asruUser: true,
+  asruLicensing: true
+};
+
 describe('PIL resolver', () => {
   before(() => {
     this.models = db.init();
@@ -21,17 +43,10 @@ describe('PIL resolver', () => {
           name: 'Marvell Pharma'
         }
       ]))
-      .then(() => this.models.Profile.query().insertGraph({
-        id: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
-        userId: 'abc123',
-        title: 'Dr',
-        firstName: 'Linford',
-        lastName: 'Christie',
-        address: '1 Some Road',
-        postcode: 'A1 1AA',
-        email: 'test1@example.com',
-        telephone: '01234567890'
-      }));
+      .then(() => this.models.Profile.query().insertGraph(
+        [ PILH, LICENSING ],
+        { relate: true }
+      ));
   });
 
   afterEach(() => {
@@ -57,7 +72,7 @@ describe('PIL resolver', () => {
         action: 'create',
         data: {
           establishmentId: 8201,
-          profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+          profileId: PILH.id,
           licenceNumber: 'AB-123',
           procedures: ['A', 'B', 'D', 'F'],
           notesCatD: 'Some notes for CatD',
@@ -97,7 +112,7 @@ describe('PIL resolver', () => {
     beforeEach(() => {
       return this.models.PIL.query().insert({
         id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
-        profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+        profileId: PILH.id,
         establishmentId: 8201,
         licenceNumber: 'AB-123',
         procedures: ['A', 'B']
@@ -199,16 +214,19 @@ describe('PIL resolver', () => {
   });
 
   describe('Grant', () => {
+    const expectedReviewDate = moment().add(5, 'years');
+
     it('can grant a pil', () => {
       return this.models.PIL.query().insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-        profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+        profileId: PILH.id,
         establishmentId: 8201,
         procedures: ['A']
       }).then(() => {
         const opts = {
           action: 'grant',
           id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+          changedBy: PILH.id,
           data: {}
         };
         return Promise.resolve()
@@ -219,16 +237,19 @@ describe('PIL resolver', () => {
             assert(pil.licenceNumber, 'pil has a licence number');
             assert(pil.issueDate, 'pil has an issue date');
             assert(moment(pil.issueDate).isValid(), 'pil issue date is a valid date');
+            assert(pil.reviewDate, 'pil has a review date');
+            assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date is 5 years from issue date');
           });
       });
     });
 
     it('can re-grant a pil with a new issue date', () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
+      const expectedReviewDate = moment().add(5, 'years');
 
       return this.models.PIL.query().insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-        profileId: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9',
+        profileId: PILH.id,
         establishmentId: 8201,
         status: 'revoked',
         issueDate: originalIssueDate.toISOString(),
@@ -239,6 +260,7 @@ describe('PIL resolver', () => {
         const opts = {
           action: 'grant',
           id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+          changedBy: PILH.id,
           data: {}
         };
         return Promise.resolve()
@@ -249,9 +271,48 @@ describe('PIL resolver', () => {
             assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number has not changed');
             assert(pil.issueDate, 'pil has an issue date');
             assert(originalIssueDate.isBefore(pil.issueDate), 'pil issue date has been updated to re-grant date');
+            assert(pil.reviewDate, 'pil has a review date');
+            assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date is 5 years from re-grant date');
           });
       });
     });
+
+    it('amendments by ASRU do not reset the review date', () => {
+      const originalIssueDate = moment('2019-10-01 12:00:00');
+      const originalReviewDate = originalIssueDate.clone().add(5, 'years');
+
+      return this.models.PIL.query().insert({
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        profileId: PILH.id,
+        establishmentId: 8201,
+        status: 'active',
+        issueDate: originalIssueDate.toISOString(),
+        reviewDate: originalReviewDate.toISOString(),
+        licenceNumber: 'XYZ-987',
+        procedures: ['A']
+      }).then(() => {
+        const opts = {
+          action: 'grant',
+          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+          changedBy: LICENSING.id,
+          data: {
+            procedures: ['A', 'B']
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.equal(pil.status, 'active', 'pil is active');
+            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number has not changed');
+            assert(pil.issueDate, 'pil has an issue date');
+            assert(originalIssueDate.isBefore(pil.issueDate), 'pil issue date has been updated to re-grant date');
+            assert(pil.reviewDate, 'pil has a review date');
+            assert.equal(pil.reviewDate, originalReviewDate.toISOString(), 'pil review date is 5 years from original issue date');
+          });
+      });
+    });
+
   });
 
 });
