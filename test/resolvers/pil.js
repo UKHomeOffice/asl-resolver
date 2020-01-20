@@ -279,7 +279,7 @@ describe('PIL resolver', () => {
 
     it('amendments by ASRU do not reset the review date', () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
-      const originalReviewDate = originalIssueDate.clone().add(5, 'years');
+      const originalReviewDate = moment('2024-10-01 12:00:00');
 
       return this.models.PIL.query().insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
