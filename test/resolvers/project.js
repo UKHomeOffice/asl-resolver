@@ -209,6 +209,20 @@ describe('Project resolver', () => {
           assert.equal(version.asruVersion, false);
         });
     });
+
+    it('sets the asruVersion flag to false if no changedBy is found', () => {
+      const opts = {
+        action: 'fork',
+        id: projectToForkId
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().where({ projectId: projectToForkId }).limit(1).orderBy('createdAt', 'desc'))
+        .then(versions => versions[0])
+        .then(version => {
+          assert.equal(version.asruVersion, false);
+        });
+    });
   });
 
   describe('grant', () => {
