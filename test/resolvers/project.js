@@ -6,6 +6,10 @@ const db = require('../helpers/db');
 const profileId = 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9';
 const projectId = '1da9b8b7-b12b-49f3-98be-745d286949a7';
 const projectId2 = 'd01588c4-cdca-461f-95de-f2bc2b95c9b0';
+const projectToForkId = '55a6373e-1d25-4ae2-806a-fab55f169ca4';
+
+const holcId = 'bfc29d28-85ad-44be-9d65-f18b16c069c7';
+const licensingId = 'ed7e6116-71dd-4531-8bac-40599c464158';
 
 const establishmentId = 8201;
 
@@ -131,6 +135,78 @@ describe('Project resolver', () => {
               assert(!version.deleted, 'version was not deleted');
             }
           });
+        });
+    });
+  });
+
+  describe('fork', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insertGraph({
+          id: projectToForkId,
+          status: 'active',
+          title: 'Granted project',
+          establishmentId: 8201,
+          licenceHolderId: profileId,
+          createdAt: new Date('2019-07-11').toISOString(),
+          updatedAt: new Date('2019-07-11').toISOString()
+        }))
+        .then(() => this.models.ProjectVersion.query().insert({
+          projectId: projectToForkId,
+          status: 'granted',
+          data: {
+            title: 'Granted project'
+          }
+        }))
+        .then(() => this.models.Profile.query().insert([
+          {
+            id: licensingId,
+            firstName: 'Sterling',
+            lastName: 'Archer',
+            email: 'sterling@archer.com',
+            asruUser: true,
+            asruLicensing: true
+          },
+          {
+            id: holcId,
+            firstName: 'Holc',
+            lastName: 'Hogan',
+            email: 'holc@hogan.com'
+          }
+        ]));
+    });
+
+    it('sets the asruVersion flag to true if submitted by asru user', () => {
+      const opts = {
+        action: 'fork',
+        id: projectToForkId,
+        meta: {
+          changedBy: licensingId
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().where({ projectId: projectToForkId }).limit(1).orderBy('createdAt', 'desc'))
+        .then(versions => versions[0])
+        .then(version => {
+          assert.equal(version.asruVersion, true);
+        });
+    });
+
+    it('sets the asruVersion flag to false if submitted by establishment user', () => {
+      const opts = {
+        action: 'fork',
+        id: projectToForkId,
+        meta: {
+          changedBy: holcId
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().where({ projectId: projectToForkId }).limit(1).orderBy('createdAt', 'desc'))
+        .then(versions => versions[0])
+        .then(version => {
+          assert.equal(version.asruVersion, false);
         });
     });
   });
