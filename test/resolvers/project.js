@@ -193,7 +193,7 @@ describe('Project resolver', () => {
         });
     });
 
-    it('doesn\'t update the asruVersion flag is status is not granted', () => {
+    it('doesn\'t update the asruVersion flag if status is not granted', () => {
       const opts = {
         action: 'fork',
         id: projectToForkId,
