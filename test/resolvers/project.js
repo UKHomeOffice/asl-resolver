@@ -193,6 +193,24 @@ describe('Project resolver', () => {
         });
     });
 
+    it('doesn\'t update the asruVersion flag is status is not granted', () => {
+      const opts = {
+        action: 'fork',
+        id: projectToForkId,
+        meta: {
+          changedBy: licensingId
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().where({ projectId: projectToForkId }).patch({ status: 'draft' }))
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().where({ projectId: projectToForkId }).limit(1).orderBy('createdAt', 'desc'))
+        .then(versions => versions[0])
+        .then(version => {
+          assert.equal(version.asruVersion, false);
+        });
+    });
+
     it('sets the asruVersion flag to false if submitted by establishment user', () => {
       const opts = {
         action: 'fork',
