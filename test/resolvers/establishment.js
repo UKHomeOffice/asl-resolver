@@ -74,4 +74,32 @@ describe('Establishment resolver', () => {
     });
   });
 
+  describe('Revoke', () => {
+    it('can revoke an establishment licence', () => {
+      return this.models.Establishment.query().insert({
+        id: 101,
+        name: 'Research 101',
+        status: 'active'
+      })
+        .then(() => {
+          const opts = {
+            id: 101,
+            action: 'revoke',
+            data: {}
+          };
+
+          return Promise.resolve()
+            .then(() => this.establishment(opts))
+            .then(() => this.models.Establishment.query())
+            .then(establishments => establishments[0])
+            .then(establishment => {
+              assert.deepEqual(establishment.status, 'revoked', 'status has been changed to revoked');
+              assert(establishment.revocationDate, 'has a revocation date');
+              assert(moment(establishment.revocationDate).isValid(), 'revocation date is a valid date');
+            });
+        });
+    });
+
+  });
+
 });
