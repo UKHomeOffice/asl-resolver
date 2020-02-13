@@ -263,6 +263,43 @@ describe('Profile resolver', () => {
           });
         });
     });
+
+    it('transfers all roles to the target and prevents them from being duplicated', () => {
+      const params = {
+        action: 'merge',
+        data: {
+          target: ID_2
+        },
+        id: ID_1
+      };
+
+      return Promise.resolve()
+        .then(() => {
+          return this.models.Role.query().insert([
+            { profileId: ID_1, establishmentId: EST_1, type: 'holc' },
+            { profileId: ID_1, establishmentId: EST_1, type: 'nacwo' },
+            { profileId: ID_2, establishmentId: EST_1, type: 'nacwo' }, // both profiles have nacwo role at est1
+            { profileId: ID_2, establishmentId: EST_2, type: 'nacwo' }
+          ]);
+        })
+        .then(() => this.profile(params))
+        .then(() => {
+          return this.models.Role.query().where({ profileId: ID_1 })
+            .then(roles => {
+              assert(roles.length === 0, 'all roles should be removed from the source profile');
+            });
+        })
+        .then(() => {
+          return this.models.Role.query().where({ profileId: ID_2 })
+            .then(roles => {
+              assert(roles.length === 3, 'the target profile should have three roles total');
+              assert(roles.find(r => r.establishmentId === EST_1 && r.type === 'holc'), 'target is now holc at establishment 1');
+              assert(roles.find(r => r.establishmentId === EST_1 && r.type === 'nacwo'), 'target retains nacwo at establishment 1');
+              assert(roles.filter(r => r.establishmentId === EST_1 && r.type === 'nacwo').length === 1, 'only a single nacwo role for target at establishment 1');
+              assert(roles.find(r => r.establishmentId === EST_2 && r.type === 'nacwo'), 'target retains nacwo at establishment 2');
+            });
+        });
+    });
   });
 
   describe('Update', () => {
