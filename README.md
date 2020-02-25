@@ -50,7 +50,8 @@ The following environment variables can be optionally defined:
 * `DATABASE_USERNAME` - username of the postgres instance - default `undefined`
 * `DATABASE_PASSWORD` - password of the postgres instance - default `undefined`
 * `JWT_EXPIRY` - expiry time for invitation links - default `7 days`
-* `LOG_LEVEL` - logging level
+* `LOG_LEVEL` - logging level,
+* `POSTGRES_PASSWORD` - default `undefined`
 
 ## Connected services
 
