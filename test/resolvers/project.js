@@ -720,6 +720,94 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('transfer', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert({
+          id: 8202,
+          name: 'Univerty of Cheese'
+        }))
+        .then(() => this.models.Project.query().insert({
+          id: projectId,
+          status: 'active',
+          establishmentId: 8201,
+          licenceHolderId: profileId,
+          title: 'Project to transfer'
+        }));
+    });
+
+    it('throws an error if the version to transfer isn\'t submitted', () => {
+      const opts = {
+        action: 'transfer',
+        id: projectId,
+        data: {
+          establishmentId: 8202
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert({
+          projectId,
+          status: 'draft',
+          data: {
+            foo: 'bar',
+            transferToEstablishment: 8202
+          }
+        }))
+        .then(() => this.project(opts))
+        .catch(err => {
+          assert.equal(err.message, 'Cannot transfer unsubmitted version');
+        });
+    });
+
+    describe('successful transfer', () => {
+      beforeEach(() => {
+        const opts = {
+          action: 'transfer',
+          id: projectId,
+          data: {
+            establishmentId: 8202
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert({
+            projectId,
+            status: 'submitted',
+            data: {
+              foo: 'bar',
+              transferToEstablishment: 8202
+            }
+          }))
+          .then(() => this.project(opts));
+      });
+
+      it('clones the project into the new establishment', () => {
+        return this.models.Project.query().findOne({ establishmentId: 8202 })
+          .then(project => {
+            assert.equal(project.title, 'Project to transfer');
+            assert.equal(project.status, 'active');
+          });
+      });
+
+      it('creates a clone of the version under the new project, removing the transfer flag', () => {
+        return Promise.resolve()
+          .then(() => this.models.Project.query().findOne({ establishmentId: 8202 }))
+          .then(({ id }) => this.models.ProjectVersion.query().findOne({ projectId: id }))
+          .then(version => {
+            assert.equal(version.status, 'granted');
+            assert.equal(version.data.foo, 'bar');
+            assert.equal(version.data.transferToEstablishment, undefined);
+          });
+      });
+
+      it('updates the status of the old project to transferred', () => {
+        return this.models.Project.query().findById(projectId)
+          .then(project => {
+            assert.equal(project.status, 'transferred');
+          });
+      });
+    });
+  });
+
   describe('delete-amendments', () => {
     beforeEach(() => {
       return Promise.resolve()
