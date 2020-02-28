@@ -992,4 +992,151 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('Conversion of legacy project licences', () => {
+
+    it('can create a project stub for a legacy licence', () => {
+      const title = 'Digitised Paper Licence Stub';
+      const licenceNumber = 'XXX-123-XXX';
+      const issueDate = new Date('2018-08-15').toISOString();
+      const expectedExpiryDate = new Date('2023-08-15').toISOString();
+
+      const duration = {
+        years: 5,
+        months: 0
+      };
+
+      const opts = {
+        action: 'create',
+        data: {
+          title,
+          establishmentId,
+          licenceHolderId: profileId,
+          licenceNumber,
+          issueDate,
+          isLegacyStub: true,
+          version: {
+            data: {
+              title,
+              duration
+            }
+          }
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().eager('version'))
+        .then(projects => projects[0])
+        .then(project => {
+          assert.equal(project.status, 'active', 'the project should be active');
+          assert.equal(project.isLegacyStub, true, 'the project should be a legacy stub');
+          assert.equal(project.schemaVersion, 0, 'the schema version should be 0');
+          assert.equal(project.migratedId, 'legacy-conversion', 'the project should have a migrated id of "legacy-conversion"');
+          assert.equal(project.establishmentId, establishmentId, 'the project should have an establishment id');
+          assert.equal(project.licenceHolderId, profileId, 'the project should have a licence holder id');
+          assert.equal(project.licenceNumber, licenceNumber, 'the project should have a licence number');
+          assert.equal(project.issueDate, issueDate, 'the project should have an issue date');
+          assert.equal(project.expiryDate, expectedExpiryDate, 'the project should have an expiry date');
+
+          assert.equal(project.version.length, 1, 'there should be a single project version');
+
+          const version = project.version[0];
+          assert.equal(version.status, 'granted', 'the version should be granted');
+          assert.equal(version.asruVersion, true, 'the version should be an asru version');
+          assert.equal(version.data.title, title, 'the version should have the same title as the project');
+          assert.deepEqual(version.data.duration, duration, 'the version should have the correct duration');
+          assert.equal(version.data.isLegacyStub, true, 'the version should be flagged as a legacy stub');
+        });
+    });
+
+    it('can convert a project stub into a standard legacy licence', () => {
+      const title = 'Digitised Paper Licence Stub';
+      const licenceNumber = 'XXX-123-XXX';
+      const issueDate = new Date('2018-08-15 12:00:00').toISOString();
+      const initialExpiryDate = new Date('2023-08-15 12:00:00').toISOString();
+      const draftDate = new Date('2020-02-28 12:00:00').toISOString();
+
+      const conversionTitle = 'Digitised Paper Licence';
+      const expectedExpiryDate = new Date('2023-02-15 12:00:00').toISOString();
+
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            title,
+            establishmentId,
+            licenceHolderId: profileId,
+            licenceNumber,
+            issueDate,
+            expiryDate: initialExpiryDate,
+            isLegacyStub: true,
+            schemaVersion: 0,
+            status: 'active'
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            id: '574266e5-ef34-4e34-bf75-7b6201357e75',
+            projectId,
+            data: {
+              title,
+              duration: {
+                years: 5,
+                months: 0
+              },
+              isLegacyStub: true
+            },
+            status: 'granted',
+            asruVersion: true,
+            createdAt: issueDate
+          },
+          {
+            id: '0e13dc10-86a2-4ace-acda-06da54e6e8eb',
+            projectId,
+            data: {
+              title: conversionTitle,
+              duration: {
+                years: 4,
+                months: 6
+              },
+              isLegacyStub: true
+            },
+            status: 'draft',
+            asruVersion: true,
+            createdAt: draftDate
+          }
+        ]))
+        .then(() => {
+          const opts = {
+            action: 'convert',
+            id: projectId,
+            data: {
+              establishmentId
+            },
+            meta: {
+              version: '0e13dc10-86a2-4ace-acda-06da54e6e8eb'
+            }
+          };
+
+          return Promise.resolve()
+            .then(() => this.project(opts))
+            .then(() => this.models.Project.query().findById(projectId).eager('version'))
+            .then(project => {
+              assert.equal(project.status, 'active', 'the project should still be active');
+              assert.equal(project.title, conversionTitle, 'the project title should reflect the converted version');
+              assert.equal(project.expiryDate, expectedExpiryDate, 'the expiry date should reflect the converted version duration');
+              assert.equal(project.isLegacyStub, false, 'the project should not be a legacy stub');
+              assert.equal(project.version.length, 2, 'there should be exactly 2 versions');
+
+              const convertedVersion = project.version.find(v => v.id === '0e13dc10-86a2-4ace-acda-06da54e6e8eb');
+
+              assert.equal(convertedVersion.isLegacyStub, undefined, 'the converted version should not be a legacy stub');
+              assert.equal(convertedVersion.status, 'granted', 'the converted version should be granted');
+              assert.equal(convertedVersion.data.title, conversionTitle, 'thet title should match the converted version');
+            });
+        });
+    });
+
+  });
+
 });
