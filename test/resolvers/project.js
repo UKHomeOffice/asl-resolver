@@ -1055,6 +1055,48 @@ describe('Project resolver', () => {
         });
     });
 
+    it('expires the project stub if the expiry is in the past', () => {
+      const title = 'Expired Licence Stub';
+      const licenceNumber = 'XXX-123-XXX';
+      const issueDate = new Date('2016-08-15').toISOString();
+      const expectedExpiryDate = new Date('2018-08-15').toISOString();
+
+      const duration = {
+        years: 2,
+        months: 0
+      };
+
+      const opts = {
+        action: 'create',
+        data: {
+          title,
+          establishmentId,
+          licenceHolderId: profileId,
+          licenceNumber,
+          issueDate,
+          isLegacyStub: true,
+          version: {
+            data: {
+              title,
+              duration
+            }
+          }
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query())
+        .then(projects => projects[0])
+        .then(project => {
+          assert.equal(project.status, 'expired', 'the project should be expired');
+          assert.equal(project.isLegacyStub, true, 'the project should be a legacy stub');
+          assert.equal(project.schemaVersion, 0, 'the schema version should be 0');
+          assert.equal(project.issueDate, issueDate, 'the project should have an issue date');
+          assert.equal(project.expiryDate, expectedExpiryDate, 'the project should have an expiry date');
+        });
+    });
+
     it('can convert a project stub into a standard legacy licence', () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
