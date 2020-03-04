@@ -1137,6 +1137,63 @@ describe('Project resolver', () => {
         });
     });
 
+    it('can convert a project stub into a standard legacy licence', () => {
+      const title = 'Digitised Paper Licence Stub';
+      const issueDate = new Date('2018-08-15 12:00:00').toISOString();
+      const expiryDate = new Date('2023-08-15 12:00:00').toISOString();
+
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            title,
+            establishmentId,
+            licenceHolderId: profileId,
+            licenceNumber: 'XXX-123-XXX',
+            issueDate,
+            expiryDate,
+            isLegacyStub: true,
+            schemaVersion: 0,
+            status: 'active'
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            id: '574266e5-ef34-4e34-bf75-7b6201357e75',
+            projectId,
+            data: {
+              title,
+              duration: {
+                years: 5,
+                months: 0
+              },
+              isLegacyStub: true
+            },
+            status: 'granted',
+            asruVersion: true,
+            createdAt: issueDate
+          }
+        ]))
+        .then(() => {
+          const opts = {
+            action: 'delete',
+            id: projectId
+          };
+
+          return Promise.resolve()
+            .then(() => this.project(opts))
+            .then(() => this.models.Project.queryWithDeleted().findById(projectId).eager('version'))
+            .then(project => {
+              assert(project.deleted, 'the project should be deleted');
+              assert(moment(project.deleted).isValid(), 'the project deleted date should be valid');
+              project.version.map(version => {
+                assert(version.deleted, 'the version should be deleted');
+                assert(moment(version.deleted).isValid(), 'the version deleted date should be valid');
+              });
+            });
+        });
+    });
+
   });
 
 });
