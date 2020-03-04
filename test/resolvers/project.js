@@ -780,12 +780,15 @@ describe('Project resolver', () => {
           .then(() => this.project(opts));
       });
 
-      it('clones the project into the new establishment', () => {
-        return this.models.Project.query().findOne({ establishmentId: 8202 })
-          .then(project => {
-            assert.equal(project.title, 'Project to transfer');
-            assert.equal(project.status, 'active');
-          });
+      it('clones the project into the new establishment updating transferredIn and pointers to old est and proj', async () => {
+        const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
+        const oldProject = await this.models.Project.query().findById(projectId);
+
+        assert.equal(newProject.title, 'Project to transfer');
+        assert.equal(newProject.status, 'active');
+        assert(isNowish(newProject.transferredIn));
+        assert.equal(newProject.previousEstablishmentId, 8201);
+        assert.equal(newProject.previousProjectId, oldProject.id);
       });
 
       it('creates a clone of the version under the new project, removing the transfer flag', () => {
@@ -799,11 +802,14 @@ describe('Project resolver', () => {
           });
       });
 
-      it('updates the status of the old project to transferred', () => {
-        return this.models.Project.query().findById(projectId)
-          .then(project => {
-            assert.equal(project.status, 'transferred');
-          });
+      it('updates the status of the old project to transferred, updates transferredOut and new proj/est pointers', async () => {
+        const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
+        const oldProject = await this.models.Project.query().findById(projectId);
+
+        assert.equal(oldProject.status, 'transferred');
+        assert(isNowish(oldProject.transferredOut));
+        assert.equal(oldProject.transferEstablishmentId, 8202);
+        assert.equal(oldProject.transferProjectId, newProject.id);
       });
     });
   });
