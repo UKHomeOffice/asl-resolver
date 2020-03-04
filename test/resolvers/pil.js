@@ -243,7 +243,7 @@ describe('PIL resolver', () => {
       });
     });
 
-    it('can re-grant a pil with a new issue date', () => {
+    it('can re-grant a revoked pil with a new issue date', () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
       const expectedReviewDate = moment().add(5, 'years');
 
@@ -277,6 +277,45 @@ describe('PIL resolver', () => {
       });
     });
 
+    it('amendments do not reset the issue date but update the review date', () => {
+      const originalIssueDate = moment('2019-10-01 12:00:00');
+      const originalReviewDate = moment('2024-10-01 12:00:00');
+      const expectedReviewDate = moment().add(5, 'years');
+
+      return this.models.PIL.query().insert({
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        profileId: PILH.id,
+        establishmentId: 8201,
+        status: 'active',
+        issueDate: originalIssueDate.toISOString(),
+        reviewDate: originalReviewDate.toISOString(),
+        licenceNumber: 'XYZ-987',
+        procedures: ['A']
+      }).then(() => {
+        const opts = {
+          action: 'grant',
+          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+          changedBy: PILH.id,
+          data: {
+            procedures: ['A', 'B']
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.equal(pil.status, 'active', 'pil is active');
+            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number should not be changed');
+            assert(pil.issueDate, 'pil has an issue date');
+            assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
+            assert(pil.reviewDate, 'pil has a review date');
+            console.log(moment(pil.reviewDate).format('YYYY-MM-DD'));
+            console.log(moment(expectedReviewDate).format('YYYY-MM-DD'));
+            assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date should be 5 years from current date');
+          });
+      });
+    });
+
     it('amendments by ASRU do not reset the review date', () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
       const originalReviewDate = moment('2024-10-01 12:00:00');
@@ -304,11 +343,11 @@ describe('PIL resolver', () => {
           .then(() => this.models.PIL.query().findById(opts.id))
           .then(pil => {
             assert.equal(pil.status, 'active', 'pil is active');
-            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number has not changed');
+            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number should not be changed');
             assert(pil.issueDate, 'pil has an issue date');
-            assert(originalIssueDate.isBefore(pil.issueDate), 'pil issue date has been updated to re-grant date');
+            assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
             assert(pil.reviewDate, 'pil has a review date');
-            assert.equal(pil.reviewDate, originalReviewDate.toISOString(), 'pil review date is 5 years from original issue date');
+            assert.equal(pil.reviewDate, originalReviewDate.toISOString(), 'pil review date should be 5 years from original issue date');
           });
       });
     });
