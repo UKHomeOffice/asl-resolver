@@ -245,7 +245,7 @@ describe('PIL resolver', () => {
 
     it('can re-grant a revoked pil with a new issue date', () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
-      const expectedReviewDate = moment().add(5, 'years');
+      const originalRevocationDate = moment('2019-10-02 12:00:00');
 
       return this.models.PIL.query().insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
@@ -253,26 +253,38 @@ describe('PIL resolver', () => {
         establishmentId: 8201,
         status: 'revoked',
         issueDate: originalIssueDate.toISOString(),
-        revocationDate: originalIssueDate.add(1, 'day').toISOString(),
+        revocationDate: originalRevocationDate.toISOString(),
         licenceNumber: 'XYZ-987',
-        procedures: ['A']
+        procedures: ['A'],
+        species: ['mice']
       }).then(() => {
         const opts = {
           action: 'grant',
           id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
           changedBy: PILH.id,
-          data: {}
+          data: {
+            procedures: ['A', 'B'],
+            species: ['mice', 'rats']
+          }
         };
         return Promise.resolve()
           .then(() => this.pil(opts))
           .then(() => this.models.PIL.query().findById(opts.id))
           .then(pil => {
-            assert.equal(pil.status, 'active', 'pil is active');
-            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number has not changed');
-            assert(pil.issueDate, 'pil has an issue date');
-            assert(originalIssueDate.isBefore(pil.issueDate), 'pil issue date has been updated to re-grant date');
-            assert(pil.reviewDate, 'pil has a review date');
-            assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date is 5 years from re-grant date');
+            assert.equal(pil.licenceNumber, 'XYZ-987');
+            assert.equal(pil.status, 'revoked', 'old pil should still be revoked');
+            assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'old pil issue date should not have been changed');
+          })
+          .then(() => this.models.PIL.query().where({ licenceNumber: 'XYZ-987' }))
+          .then(pils => {
+            assert.equal(pils.length, 2, 'A new PIL record should be created with the same licence number');
+            const pil = pils.find(p => p.status === 'active');
+            assert.equal(pil.establishmentId, 8201);
+            assert.deepEqual(pil.species, ['mice', 'rats']);
+            assert.deepEqual(pil.procedures, ['A', 'B']);
+            assert(moment(pil.issueDate).isSame(moment(), 'day'), 'new pil issue date should be todays date');
+            assert(moment(pil.reviewDate).isSame(moment().add(5, 'years'), 'day'), 'new pil review date should be 5 years time');
+            assert.equal(pil.revocationDate, null);
           });
       });
     });
@@ -309,8 +321,6 @@ describe('PIL resolver', () => {
             assert(pil.issueDate, 'pil has an issue date');
             assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
             assert(pil.reviewDate, 'pil has a review date');
-            console.log(moment(pil.reviewDate).format('YYYY-MM-DD'));
-            console.log(moment(expectedReviewDate).format('YYYY-MM-DD'));
             assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date should be 5 years from current date');
           });
       });
