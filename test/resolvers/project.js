@@ -780,13 +780,13 @@ describe('Project resolver', () => {
           .then(() => this.project(opts));
       });
 
-      it('clones the project into the new establishment updating transferredIn and pointers to old est and proj', async () => {
+      it('clones the project into the new establishment updating transferredInDate and pointers to old est and proj', async () => {
         const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
         assert.equal(newProject.title, 'Project to transfer');
         assert.equal(newProject.status, 'active');
-        assert(isNowish(newProject.transferredIn));
+        assert(isNowish(newProject.transferredInDate));
         assert.equal(newProject.previousEstablishmentId, 8201);
         assert.equal(newProject.previousProjectId, oldProject.id);
       });
@@ -802,12 +802,12 @@ describe('Project resolver', () => {
           });
       });
 
-      it('updates the status of the old project to transferred, updates transferredOut and new proj/est pointers', async () => {
+      it('updates the status of the old project to transferred, updates transferredOutDate and new proj/est pointers', async () => {
         const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
         assert.equal(oldProject.status, 'transferred');
-        assert(isNowish(oldProject.transferredOut));
+        assert(isNowish(oldProject.transferredOutDate));
         assert.equal(oldProject.transferEstablishmentId, 8202);
         assert.equal(oldProject.transferProjectId, newProject.id);
       });
