@@ -6,7 +6,7 @@
   "scripts": {
     "test": "npm run test:lint && npm run test:unit",
     "pretest:unit": "npm run migrate",
-    "test:unit": "mocha --recursive",
+    "test:unit": "mocha",
     "test:lint": "eslint .",
     "dev": "nodemon -r dotenv/config index.js",
     "migrate": "DATABASE_NAME=asl-test knex migrate:latest --knexfile ./node_modules/@asl/schema/knexfile.js"
@@ -38,9 +38,9 @@
   "devDependencies": {
     "dotenv": "^6.0.0",
     "eslint": "^5.0.1",
-    "eslint-config-lennym": "^2.0.1",
+    "eslint-config-lennym": "^2.1.1",
     "eslint-plugin-undocumented-env": "^1.0.0",
-    "mocha": "^5.2.0",
+    "mocha": "^7.1.0",
     "nodemon": "^1.17.5",
     "sinon": "^6.1.5",
     "uuid": "^3.3.3"
