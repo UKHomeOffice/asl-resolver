@@ -998,6 +998,77 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('update-licence-number', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Active project stub wrong licence number',
+            licenceNumber: 'ABC-123',
+            issueDate: new Date('2020-01-17').toISOString(),
+            expiryDate: new Date('2025-01-17').toISOString(),
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            isLegacyStub: true
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            id: '574266e5-ef34-4e34-bf75-7b6201357e75',
+            projectId,
+            data: {
+              duration: { years: 5, months: 0 }
+            },
+            status: 'granted',
+            createdAt: new Date('2020-01-17').toISOString()
+          }
+        ]));
+    });
+
+    it('cannot change the licence number of a standard project', () => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().findById(projectId).patch({ isLegacyStub: false }))
+        .then(() => {
+          const newLicenceNumber = 'XYZ-789';
+
+          const opts = {
+            action: 'update-licence-number',
+            id: projectId,
+            data: {
+              licenceNumber: newLicenceNumber
+            }
+          };
+
+          return Promise.resolve()
+            .then(() => this.project(opts))
+            .catch(err => {
+              assert.equal(err.message, 'Can only update the licence number for legacy stubs');
+            });
+        });
+    });
+
+    it('can change the licence number of a project stub', () => {
+      const newLicenceNumber = 'XYZ-789';
+
+      const opts = {
+        action: 'update-licence-number',
+        id: projectId,
+        data: {
+          licenceNumber: newLicenceNumber
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          assert.equal(project.licenceNumber, newLicenceNumber, 'licence number was updated correctly');
+        });
+    });
+  });
+
   describe('Conversion of legacy project licences', () => {
 
     it('can create a project stub for a legacy licence', () => {
