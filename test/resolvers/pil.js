@@ -25,6 +25,10 @@ const LICENSING = {
   asruLicensing: true
 };
 
+function isThenish(date, expected) {
+  return moment(date).isBetween(moment(expected).subtract(5, 'seconds'), moment(expected).add(5, 'seconds'));
+}
+
 describe('PIL resolver', () => {
   before(() => {
     this.models = db.init();
@@ -181,6 +185,23 @@ describe('PIL resolver', () => {
           name: 'Error',
           message: /id is required on delete/
         });
+      });
+    });
+
+    describe('review', () => {
+      it('sets the review date to 5 years from now', () => {
+        const opts = {
+          action: 'review',
+          id: '9fbe0218-995d-47d3-88e7-641fc046d7d1'
+        };
+        const expected = moment().add(5, 'years');
+
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.ok(isThenish(pil.reviewDate, expected));
+          });
       });
     });
 
