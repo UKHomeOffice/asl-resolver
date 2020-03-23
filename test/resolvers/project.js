@@ -11,6 +11,8 @@ const projectToForkId = '55a6373e-1d25-4ae2-806a-fab55f169ca4';
 const holcId = 'bfc29d28-85ad-44be-9d65-f18b16c069c7';
 const licensingId = 'ed7e6116-71dd-4531-8bac-40599c464158';
 
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 const establishmentId = 8201;
 
 const isNowish = (date) => {
@@ -28,7 +30,7 @@ describe('Project resolver', () => {
     return db.clean(this.models)
       .then(() => this.models.Establishment.query().insert({
         id: 8201,
-        name: 'Univerty of Croydon'
+        name: 'University of Croydon'
       }))
       .then(() => this.models.Profile.query().insert({
         id: profileId,
@@ -676,11 +678,11 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query())
         .then(projects => {
-          assert.equal(projects.length, 1, '1 project exists in table');
+          assert.equal(projects.length, 1, '1 project should exist in table');
           return this.models.ProjectVersion.query().where({ projectId: projects[0].id })
             .then(versions => {
-              assert.equal(versions.length, 1, 'version not added');
-              assert.deepEqual(versions[0].data, null, 'empty version not added');
+              assert.equal(versions.length, 1, 'version should have been created');
+              assert.deepEqual(versions[0].data, null, 'version data should be empty');
             });
         });
     });
@@ -709,12 +711,84 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query())
         .then(projects => {
-          assert(projects.length === 1, 'project not added');
-          assert.equal(projects[0].title, data.title, 'title not added to project');
+          assert(projects.length === 1, 'project should have been added');
+          assert.equal(projects[0].title, data.title, 'title should have been added to project');
+          return this.models.ProjectVersion.query().where({ projectId: projects[0].id })
+            .then(versions => {
+              assert(versions.length === 1, 'version should be created');
+              assert.deepEqual(versions[0].data, data, 'version data should have been populated');
+            });
+        });
+    });
+
+    it('adds id properties to protocol species details if missing', () => {
+      const data = {
+        title: 'Species IDs',
+        species: ['mice', 'rats'],
+        protocols: [
+          {
+            title: 'Mouse protocol',
+            species: ['mice'],
+            speciesDetails: [
+              { value: 'mice', 'maximum-times-used': '100' }
+            ]
+          },
+          {
+            title: 'Rat protocol',
+            species: ['rats'],
+            speciesDetails: [
+              { value: 'rats', 'maximum-times-used': '200' }
+            ]
+          },
+          {
+            title: 'Both protocol',
+            species: ['mice', 'rats'],
+            speciesDetails: [
+              { value: 'mice', 'maximum-times-used': '300' },
+              { value: 'rats', 'maximum-times-used': '400' }
+            ]
+          }
+        ]
+      };
+
+      const opts = {
+        action: 'create',
+        data: {
+          establishmentId,
+          licenceHolderId: profileId,
+          version: {
+            data
+          }
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query())
+        .then(projects => {
           return this.models.ProjectVersion.query().where({ projectId: projects[0].id })
             .then(versions => {
               assert(versions.length === 1, 'version not added');
-              assert.deepEqual(versions[0].data, data, 'data not added to version');
+              const version = versions[0].data;
+              assert.equal(version.protocols.length, 3, 'version should have 3 protocols');
+              assert.equal(version.protocols[0].title, 'Mouse protocol');
+              assert.equal(version.protocols[1].title, 'Rat protocol');
+              assert.equal(version.protocols[2].title, 'Both protocol');
+
+              assert.ok(version.protocols[0].speciesDetails[0].id.match(uuid));
+              assert.equal(version.protocols[0].speciesDetails[0].value, 'mice');
+              assert.equal(version.protocols[0].speciesDetails[0]['maximum-times-used'], '100');
+
+              assert.ok(version.protocols[1].speciesDetails[0].id.match(uuid));
+              assert.equal(version.protocols[1].speciesDetails[0].value, 'rats');
+              assert.equal(version.protocols[1].speciesDetails[0]['maximum-times-used'], '200');
+
+              assert.ok(version.protocols[2].speciesDetails[0].id.match(uuid));
+              assert.equal(version.protocols[2].speciesDetails[0].value, 'mice');
+              assert.equal(version.protocols[2].speciesDetails[0]['maximum-times-used'], '300');
+
+              assert.ok(version.protocols[2].speciesDetails[1].id.match(uuid));
+              assert.equal(version.protocols[2].speciesDetails[1].value, 'rats');
+              assert.equal(version.protocols[2].speciesDetails[1]['maximum-times-used'], '400');
             });
         });
     });
