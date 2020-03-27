@@ -6,7 +6,12 @@ const db = require('../helpers/db');
 const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
 const ROLE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08c';
 const HOLC_ROLE_ID = '35a51aed-d489-4d73-a1fe-599947beb72e';
+
+const NACWO_ROLE_ID = 'ea07f16a-f9f9-402a-b916-951830dfe730';
+const NACWO_ROLE_ID_2 = 'cbcaddc0-7e31-4eb0-bc93-10cd29ece6e9';
+
 const ESTABLISHMENT_ID = 8201;
+const ESTABLISHMENT_ID_2 = 8202;
 
 const nowish = (a, b, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
@@ -21,11 +26,18 @@ describe('Role resolver', () => {
 
   beforeEach(() => {
     return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
-        id: ESTABLISHMENT_ID,
-        name: 'Univerty of Croydon',
-        updatedAt: '2019-01-01T10:38:43.666Z'
-      }))
+      .then(() => this.models.Establishment.query().insert([
+        {
+          id: ESTABLISHMENT_ID,
+          name: 'Univerty of Croydon',
+          updatedAt: '2019-01-01T10:38:43.666Z'
+        },
+        {
+          id: ESTABLISHMENT_ID_2,
+          name: 'Marvell Pharmaceutical',
+          updatedAt: '2019-01-01T10:38:43.666Z'
+        }
+      ]))
       .then(() => this.models.Profile.query().insert({
         id: PROFILE_ID,
         firstName: 'Sterling',
@@ -44,6 +56,38 @@ describe('Role resolver', () => {
           establishmentId: ESTABLISHMENT_ID,
           profileId: PROFILE_ID,
           type: 'holc'
+        },
+        {
+          id: NACWO_ROLE_ID,
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID,
+          type: 'nacwo'
+        },
+        {
+          id: NACWO_ROLE_ID_2,
+          establishmentId: ESTABLISHMENT_ID_2,
+          profileId: PROFILE_ID,
+          type: 'nacwo'
+        }
+      ]))
+      .then(() => this.models.Place.query().insert([
+        {
+          site: 'Site 1',
+          area: 'Area 1',
+          name: 'Place at Establishment 1',
+          suitability: ['DOG'],
+          holding: ['LTH'],
+          establishmentId: ESTABLISHMENT_ID,
+          nacwoId: NACWO_ROLE_ID
+        },
+        {
+          site: 'Site 2',
+          area: 'Area 2',
+          name: 'Place at Establishment 2',
+          suitability: ['CAT'],
+          holding: ['STH'],
+          establishmentId: ESTABLISHMENT_ID_2,
+          nacwoId: NACWO_ROLE_ID_2
         }
       ]));
   });
@@ -161,5 +205,44 @@ describe('Role resolver', () => {
           assert.equal(establishment.updatedAt, updatedAt);
         });
     });
+
+    describe('Dissociate places', () => {
+
+      it('removing a nacwo also dissociates the user from any related places at that establishment', () => {
+        const opts = {
+          action: 'delete',
+          id: NACWO_ROLE_ID,
+          data: {
+            establishmentId: ESTABLISHMENT_ID,
+            profileId: PROFILE_ID
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.role(opts))
+          .then(() => this.models.Place.query().where({ nacwoId: NACWO_ROLE_ID }))
+          .then(places => {
+            assert.equal(places.length, 0, 'there should be no places with that nacwo role id');
+          });
+      });
+
+      it('removing a nacwo role does not dissociate the user from places at other establishments', () => {
+        const opts = {
+          action: 'delete',
+          id: NACWO_ROLE_ID_2,
+          data: {
+            establishmentId: ESTABLISHMENT_ID_2,
+            profileId: PROFILE_ID
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.role(opts))
+          .then(() => this.models.Place.query().where({ nacwoId: NACWO_ROLE_ID }))
+          .then(places => {
+            assert.equal(places.length, 1, 'the profile should still be nacwo for the place at establishment 1');
+          });
+      });
+
+    });
+
   });
 });
