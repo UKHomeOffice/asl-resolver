@@ -6,6 +6,7 @@ const db = require('../helpers/db');
 const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
 const ROLE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08c';
 const HOLC_ROLE_ID = '35a51aed-d489-4d73-a1fe-599947beb72e';
+const NACWO_ROLE_ID = 'ea07f16a-f9f9-402a-b916-951830dfe730';
 const ESTABLISHMENT_ID = 8201;
 
 const nowish = (a, b, n = 3) => {
@@ -44,6 +45,12 @@ describe('Role resolver', () => {
           establishmentId: ESTABLISHMENT_ID,
           profileId: PROFILE_ID,
           type: 'holc'
+        },
+        {
+          id: NACWO_ROLE_ID,
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID,
+          type: 'nacwo'
         }
       ]));
   });
@@ -159,6 +166,32 @@ describe('Role resolver', () => {
         .then(establishment => {
           assert.ok(establishment);
           assert.equal(establishment.updatedAt, updatedAt);
+        });
+    });
+
+    it('removing a nacwo also dissociates the user from any related places', () => {
+      const opts = {
+        action: 'delete',
+        id: NACWO_ROLE_ID,
+        data: {
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.models.Place.query().insert({
+          site: 'Site 1',
+          area: 'Area 1',
+          name: 'Some Place',
+          suitability: ['DOG'],
+          holding: ['STH', 'LTH'],
+          establishmentId: ESTABLISHMENT_ID,
+          nacwoId: NACWO_ROLE_ID
+        }))
+        .then(() => this.role(opts))
+        .then(() => this.models.Place.query().where({ nacwoId: NACWO_ROLE_ID }))
+        .then(places => {
+          assert.equal(places.length, 0, 'there should be no places with that nacwo role id');
         });
     });
   });
