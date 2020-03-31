@@ -490,8 +490,17 @@ describe('Project resolver', () => {
               .then(() => this.project(opts))
               .then(() => this.models.Project.query().findById(projectId))
               .then(project => {
-                const diff = moment(project.expiryDate).diff(moment(project.issueDate), 'months');
-                assert.equal(diff, expected);
+                const issueDate = moment(project.issueDate);
+                const expiryDate = moment(project.expiryDate);
+                let diff;
+
+                // handle dates where the issue month has more days than the expiry month
+                if (issueDate.date() < expiryDate.date()) {
+                  diff = expiryDate.diff(issueDate, 'months');
+                } else {
+                  diff = issueDate.diff(expiryDate, 'months');
+                }
+                assert.equal(Math.abs(diff), expected);
               });
           });
         };
