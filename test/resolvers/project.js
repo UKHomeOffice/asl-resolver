@@ -494,7 +494,7 @@ describe('Project resolver', () => {
                 const expiryDate = moment(project.expiryDate);
                 let diff;
 
-                // handle dates where the issue month has more days than the expiry month
+                // handle dates where the expiry month has more days than the issue month
                 if (issueDate.date() < expiryDate.date()) {
                   diff = expiryDate.diff(issueDate, 'months');
                 } else {
