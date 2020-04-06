@@ -3,6 +3,7 @@ const settings = require('@asl/schema/knexfile').test;
 
 const tables = [
   'Changelog',
+  'ProjectProfile',
   'ProjectVersion',
   'Project',
   'Invitation',
