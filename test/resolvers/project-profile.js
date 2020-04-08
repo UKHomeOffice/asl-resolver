@@ -61,11 +61,11 @@ describe('ProjectProfile resolver', () => {
     return Promise.resolve()
       .then(() => this.resolver(params))
       .then(() => {
-        return this.models.Project.query().findById(ids.projectId).eager('profiles');
+        return this.models.Project.query().findById(ids.projectId).withGraphFetched('collaborators');
       })
       .then(project => {
-        assert.equal(project.profiles.length, 1);
-        assert.equal(project.profiles[0].firstName, 'Basic', 'it should add the profile to the project');
+        assert.equal(project.collaborators.length, 1);
+        assert.equal(project.collaborators[0].firstName, 'Basic', 'it should add the profile to the project');
       });
   });
 
@@ -82,9 +82,9 @@ describe('ProjectProfile resolver', () => {
     return Promise.resolve()
       .then(() => this.models.ProjectProfile.query().insert({ projectId: ids.projectId, profileId: ids.userToInvite }))
       .then(() => this.resolver(params))
-      .then(() => this.models.Project.query().findById(ids.projectId).eager('profiles'))
+      .then(() => this.models.Project.query().findById(ids.projectId).withGraphFetched('collaborators'))
       .then(project => {
-        assert.equal(project.profiles.length, 0, 'user was removed from project');
+        assert.equal(project.collaborators.length, 0, 'user was removed from project');
       });
   });
 
