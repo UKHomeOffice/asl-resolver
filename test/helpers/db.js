@@ -12,6 +12,7 @@ const tables = [
   'PilTransfer',
   'FeeWaiver',
   'PIL',
+  'PlaceRole',
   'Place',
   'Role',
   'Certificate',
