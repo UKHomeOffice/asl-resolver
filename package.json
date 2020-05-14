@@ -9,7 +9,7 @@
     "test:unit": "mocha",
     "test:lint": "eslint .",
     "dev": "nodemon -r dotenv/config index.js",
-    "migrate": "DATABASE_NAME=asl-test knex migrate:latest --knexfile ./node_modules/@asl/schema/knexfile.js"
+    "migrate": "knex migrate:latest --knexfile ./node_modules/@asl/schema/knexfile.js --env test"
   },
   "repository": {
     "type": "git",
@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/UKHomeOffice/asl-resolver#readme",
   "dependencies": {
-    "@asl/schema": "^7.40.1",
+    "@asl/schema": "^7.44.0",
     "aws-sdk": "^2.270.1",
     "deep-diff": "^1.0.2",
     "hot-shots": "^6.8.2",
