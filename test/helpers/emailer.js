@@ -1,5 +1,5 @@
 const sinon = require('sinon');
 
 module.exports = {
-  sendEmail: sinon.stub()
+  sendEmail: sinon.stub().resolves()
 };

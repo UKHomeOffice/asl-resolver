@@ -2,6 +2,7 @@ const assert = require('assert');
 const { profile } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 const Logger = require('../../lib/utils/logger');
+const emailer = require('../helpers/emailer');
 
 const ID_1 = 'e0b49357-237c-4042-b430-a57fc8e1be5f';
 const ID_2 = '8e1ac9a5-31ef-4907-8ad3-5252ccc6eb8b';
@@ -11,7 +12,15 @@ const EST_2 = 8202;
 describe('Profile resolver', () => {
   before(() => {
     this.models = db.init();
-    this.profile = profile({ models: this.models, logger: Logger({ logLevel: 'silent' }) });
+    this.profile = profile({
+      models: this.models,
+      keycloak: {
+        grantToken: () => Promise.resolve('abc'),
+        updateUser: () => Promise.resolve()
+      },
+      emailer,
+      logger: Logger({ logLevel: 'silent' })
+    });
   });
 
   beforeEach(() => {
@@ -344,5 +353,26 @@ describe('Profile resolver', () => {
           });
       });
     });
+
+    describe('email address', () => {
+
+      it('returns the profile', () => {
+        const opts = {
+          action: 'update',
+          data: {
+            email: 'test@example.com'
+          },
+          id: ID_1
+        };
+        return Promise.resolve()
+          .then(() => this.profile(opts))
+          .then(profile => {
+            assert.ok(profile);
+            assert.deepEqual(profile.id, ID_1);
+          });
+      });
+
+    });
+
   });
 });
