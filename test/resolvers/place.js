@@ -2,9 +2,13 @@ const assert = require('assert');
 const moment = require('moment');
 const { place } = require('../../lib/resolvers');
 const db = require('../helpers/db');
+const uuid = require('uuid/v4');
 
-const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
 const ESTABLISHMENT_ID = 8201;
+const PROFILE_ID_1 = uuid();
+const PROFILE_ID_2 = uuid();
+const NACWO_ROLE_ID_1 = uuid();
+const NACWO_ROLE_ID_2 = uuid();
 
 const nowish = (a, b, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
@@ -19,21 +23,31 @@ describe('Place resolver', () => {
 
   beforeEach(() => {
     return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
+      .then(() => this.models.Establishment.query().insertGraph({
         id: ESTABLISHMENT_ID,
         name: 'Univerty of Croydon',
-        updatedAt: '2019-01-01T10:38:43.666Z'
-      }))
-      .then(() => this.models.Profile.query().insert({
-        id: PROFILE_ID,
-        firstName: 'Sterling',
-        lastName: 'Archer',
-        email: 'sterling@archer.com'
-      }))
-      .then(() => this.models.Role.query().insert({
-        establishmentId: ESTABLISHMENT_ID,
-        profileId: PROFILE_ID,
-        type: 'nacwo'
+        updatedAt: '2019-01-01T10:38:43.666Z',
+        profiles: [{
+          id: PROFILE_ID_1,
+          firstName: 'Sterling',
+          lastName: 'Archer',
+          email: 'sterline@archer.com'
+        },
+        {
+          id: PROFILE_ID_2,
+          firstName: 'Vincent',
+          lastName: 'Malloy',
+          email: 'vincent@price.com'
+        }],
+        roles: [{
+          id: NACWO_ROLE_ID_1,
+          type: 'nacwo',
+          profileId: PROFILE_ID_1
+        }, {
+          id: NACWO_ROLE_ID_2,
+          type: 'nacwo',
+          profileId: PROFILE_ID_2
+        }]
       }));
   });
 
@@ -63,8 +77,7 @@ describe('Place resolver', () => {
           name: 'A room',
           site: 'A site',
           suitability: JSON.stringify(['SA']),
-          holding: JSON.stringify(['NOH']),
-          nacwo: PROFILE_ID
+          holding: JSON.stringify(['NOH'])
         }
       };
       return Promise.resolve()
@@ -80,28 +93,30 @@ describe('Place resolver', () => {
         });
     });
 
-    it('can insert a place model with no NACWO', () => {
+    it('creates role relations', () => {
       const opts = {
         action: 'create',
         data: {
           establishmentId: 8201,
-          name: 'Another room',
-          site: 'Another site',
-          suitability: JSON.stringify(['SA']),
-          holding: JSON.stringify(['NOH']),
-          nacwo: ''
+          name: 'A room',
+          site: 'A site',
+          suitability: [],
+          holding: [],
+          roles: [
+            NACWO_ROLE_ID_1,
+            NACWO_ROLE_ID_2
+          ]
         }
       };
       return Promise.resolve()
         .then(() => this.place(opts))
-        .then(() => this.models.Place.query())
-        .then(places => places[0])
+        .then(() => this.models.Place.query().withGraphFetched('roles').first())
         .then(place => {
           assert.ok(place);
-          assert.deepEqual(place.name, opts.data.name);
-          assert.deepEqual(place.site, opts.data.site);
-          assert.deepEqual(place.suitability, JSON.parse(opts.data.suitability));
-          assert.deepEqual(place.holding, JSON.parse(opts.data.holding));
+          assert.equal(place.roles.length, 2, 'place should have 2 roles assigned');
+          place.roles.map(role => {
+            assert.equal(role.type, 'nacwo', 'both assigned roles should be nacwos');
+          });
         });
     });
 
@@ -110,8 +125,7 @@ describe('Place resolver', () => {
         action: 'create',
         data: {
           establishmentId: 8201,
-          name: 'A room',
-          nacwo: PROFILE_ID
+          name: 'A room'
         }
       };
       return assert.rejects(() => {
@@ -127,8 +141,7 @@ describe('Place resolver', () => {
           name: 'A room',
           site: 'A site',
           suitability: JSON.stringify(['SA']),
-          holding: JSON.stringify(['NOH']),
-          nacwo: PROFILE_ID
+          holding: JSON.stringify(['NOH'])
         }
       };
       return Promise.resolve()
@@ -142,18 +155,25 @@ describe('Place resolver', () => {
   });
 
   describe('with existing', () => {
+    const PLACE_ID1 = uuid();
+    const PLACE_ID2 = uuid();
+    const PLACE_ID3 = uuid();
+
     beforeEach(() => {
-      return this.models.Place.query().insert([
+      return this.models.Place.query().insertGraph([
         {
-          id: '1f6f88e8-7beb-4499-9b1a-170fa58de494',
+          id: PLACE_ID1,
           establishmentId: 8201,
           name: 'A room',
           site: 'A site',
           suitability: ['SA'],
-          holding: ['NOH']
+          holding: ['NOH'],
+          roles: [
+            { id: NACWO_ROLE_ID_1 }
+          ]
         },
         {
-          id: '453decad-b438-4f2c-8af1-71258afd6569',
+          id: PLACE_ID2,
           establishmentId: 8201,
           name: 'B room',
           site: 'B site',
@@ -161,21 +181,21 @@ describe('Place resolver', () => {
           holding: ['NSEP']
         },
         {
-          id: 'd7e72073-c87c-4f43-ae14-5bea519e8114',
+          id: PLACE_ID3,
           establishmentId: 8201,
           name: 'A room',
           site: 'A site',
           suitability: ['SA', 'AQ'],
           holding: ['SEP', 'NOH']
         }
-      ]);
+      ], { relate: true });
     });
 
     describe('Update', () => {
       it('can patch a model', () => {
         const opts = {
           action: 'update',
-          id: 'd7e72073-c87c-4f43-ae14-5bea519e8114',
+          id: PLACE_ID3,
           data: {
             suitability: JSON.stringify(['AQ', 'AV'])
           }
@@ -186,6 +206,33 @@ describe('Place resolver', () => {
           .then(place => {
             assert.deepEqual(place.suitability, JSON.parse(opts.data.suitability));
             assert.deepEqual(place.holding, ['SEP', 'NOH']);
+          });
+      });
+
+      it('soft-deletes role relations when they are removed', () => {
+        const opts = {
+          action: 'update',
+          id: PLACE_ID1,
+          data: {
+            name: 'A room',
+            site: 'A site',
+            suitability: ['SA'],
+            holding: ['NOH'],
+            roles: [NACWO_ROLE_ID_2]
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.place(opts))
+          .then(() => this.models.PlaceRole.queryWithDeleted().where('placeId', PLACE_ID1))
+          .then(placeRoles => {
+            assert.equal(placeRoles.length, 2, 'there should be 2 role relations (inc. soft-deleted)');
+
+            const nacwo1Relation = placeRoles.find(pr => pr.roleId === NACWO_ROLE_ID_1);
+            assert(nacwo1Relation.deleted);
+            assert(moment(nacwo1Relation.deleted).isValid());
+
+            const nacwo2Relation = placeRoles.find(pr => pr.roleId === NACWO_ROLE_ID_2);
+            assert(!nacwo2Relation.deleted);
           });
       });
 
@@ -207,7 +254,7 @@ describe('Place resolver', () => {
       it('updates the establishment record', () => {
         const opts = {
           action: 'update',
-          id: 'd7e72073-c87c-4f43-ae14-5bea519e8114',
+          id: PLACE_ID3,
           data: {
             suitability: JSON.stringify(['AQ', 'AV'])
           }
@@ -226,7 +273,7 @@ describe('Place resolver', () => {
       it('soft deletes the model', () => {
         const opts = {
           action: 'delete',
-          id: '453decad-b438-4f2c-8af1-71258afd6569'
+          id: PLACE_ID2
         };
         return Promise.resolve()
           .then(() => this.place(opts))
@@ -256,7 +303,7 @@ describe('Place resolver', () => {
       it('updates the establishment record', () => {
         const opts = {
           action: 'delete',
-          id: '453decad-b438-4f2c-8af1-71258afd6569'
+          id: PLACE_ID2
         };
         return Promise.resolve()
           .then(() => this.place(opts))
