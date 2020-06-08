@@ -42,6 +42,8 @@ The following environment variables are required:
 * `JWT_SECRET` - arbitrary string used to sign JWT tokens for invitations
 * `EMAILER_SERVICE` - url of `asl-emailer` instance used to send invitations
 * `REGISTER_SERVICE` - url of `asl-register` instance used to accept invitations
+* `TRANSPORT_KEY` - 32 character encryption key used to encrypt messages in s3
+* `TRANSPORT_IV` - 16 character IV used to encrypt messages in s3
 
 The following environment variables can be optionally defined:
 
