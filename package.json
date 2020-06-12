@@ -42,7 +42,7 @@
     "eslint-config-lennym": "^2.1.1",
     "eslint-plugin-undocumented-env": "^1.0.0",
     "mocha": "^7.1.0",
-    "nodemon": "^1.17.5",
+    "nodemon": "^2.0.4",
     "sinon": "^6.1.5"
   }
 }
