@@ -1,17 +1,18 @@
 const moment = require('moment');
 
-module.exports = ({ Project }, logger) => async () => {
+const expire = ({ models, logger }) => {
+  const { Project } = models;
   const midnightLastNight = moment.utc().startOf('day').toISOString();
   logger.info(`performing project expiry check with cutoff of ${midnightLastNight}`);
 
-  await Project.query()
+  return Project.query()
     .patch({ status: 'expired' })
     .where('expiryDate', '<', midnightLastNight)
     .where('status', 'active')
     .returning('*')
     .then(projects => {
       if (projects.length > 0) {
-        projects.map(project => {
+        projects.forEach(project => {
           logger.info(`expired project ${project.licenceNumber}`);
         });
       } else {
@@ -19,3 +20,5 @@ module.exports = ({ Project }, logger) => async () => {
       }
     });
 };
+
+module.exports = expire;

@@ -9,7 +9,8 @@
     "test:unit": "mocha",
     "test:lint": "eslint .",
     "dev": "nodemon -r dotenv/config index.js",
-    "migrate": "knex migrate:latest --knexfile ./node_modules/@asl/schema/knexfile.js --env test"
+    "migrate": "knex migrate:latest --knexfile ./node_modules/@asl/schema/knexfile.js --env test",
+    "task": "node ./tasks/run-task"
   },
   "repository": {
     "type": "git",
@@ -29,6 +30,7 @@
     "jsondiffpatch": "^0.4.1",
     "jsonwebtoken": "^8.3.0",
     "lodash": "^4.17.15",
+    "minimist": "^1.2.5",
     "moment": "^2.24.0",
     "r2": "^2.0.1",
     "sqs-consumer": "^3.8.0",
