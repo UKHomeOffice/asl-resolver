@@ -302,6 +302,52 @@ describe('Project resolver', () => {
         });
     });
 
+    it('sets the ra date to 6 months after expiry if required', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const version = {
+        projectId,
+        status: 'submitted',
+        raCompulsory: true,
+        data: {
+          title: 'title of RA project'
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          const expectedRADate = moment(project.expiryDate).add({ months: 6 }).format('YYYY-MM-DD');
+          assert.equal(project.raDate, expectedRADate);
+        });
+    });
+
+    it('sets the ra date to null if not required', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const version = {
+        projectId,
+        status: 'submitted',
+        data: {
+          title: 'title of non RA project'
+        }
+      };
+      const raDate = moment().add({ years: 5, months: 6 }).format('YYYY-MM-DD');
+      return Promise.resolve()
+        .then(() => this.models.Project.query().findById(projectId).patch({ raDate }))
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          assert.equal(project.raDate, null);
+        });
+    });
+
     it('removes soft deleted protocols', () => {
       const PROTOCOL_1_ID = '0ac6500f-b618-4632-a00f-a01c5ee35e30';
       const PROTOCOL_2_ID = 'a5d76be3-f31d-42c2-9578-212be1d7a691';
@@ -995,17 +1041,20 @@ describe('Project resolver', () => {
   describe('revoke', () => {
     beforeEach(() => {
       return Promise.resolve()
-        .then(() => this.models.Project.query().insert([
-          {
-            id: projectId,
-            status: 'active',
-            title: 'Active project to be revoked',
-            issueDate: new Date().toISOString(),
-            expiryDate: moment(new Date()).add(5, 'years').toISOString(),
-            establishmentId: 8201,
-            licenceHolderId: profileId
-          }
-        ]));
+        .then(() => this.models.Project.query().insert({
+          id: projectId,
+          status: 'active',
+          title: 'Active project to be revoked',
+          issueDate: new Date().toISOString(),
+          expiryDate: moment(new Date()).add(5, 'years').toISOString(),
+          establishmentId: 8201,
+          licenceHolderId: profileId
+        }))
+        .then(() => this.models.ProjectVersion.query().insert({
+          projectId,
+          status: 'granted',
+          data: {}
+        }));
     });
 
     it('can revoke an active project', () => {
@@ -1024,6 +1073,80 @@ describe('Project resolver', () => {
         .then(project => {
           assert.equal(project.status, 'revoked', 'project status was not set to revoked');
           assert.ok(project.revocationDate && moment(project.revocationDate).isValid(), 'revocation date was not set');
+        });
+    });
+
+    it('updates the RA date to six months after revocationDate (optional)', () => {
+      const opts = {
+        action: 'revoke',
+        id: projectId,
+        data: {
+          establishmentId,
+          licenceHolderId: profileId
+        }
+      };
+
+      const data = {
+        retrospectiveAssessment: true
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().where({ projectId }).patch({ data }))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          const expected = moment().add(6, 'months').format('YYYY-MM-DD');
+          const raDate = project.raDate;
+          assert.equal(raDate, expected);
+        });
+    });
+
+    it('updates the RA date to six months after revocationDate (compulsory), ignoring value from data.', () => {
+      const opts = {
+        action: 'revoke',
+        id: projectId,
+        data: {
+          establishmentId,
+          licenceHolderId: profileId
+        }
+      };
+
+      const data = {
+        retrospectiveAssessment: false
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().where({ projectId }).patch({ raCompulsory: true, data }))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          const expected = moment().add(6, 'months').format('YYYY-MM-DD');
+          const raDate = project.raDate;
+          assert.equal(raDate, expected);
+        });
+    });
+
+    it('sets the RA date to null if ra not required', () => {
+      const opts = {
+        action: 'revoke',
+        id: projectId,
+        data: {
+          establishmentId,
+          licenceHolderId: profileId
+        }
+      };
+
+      const data = {
+        retrospectiveAssessment: false
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().where({ projectId }).patch({ data }))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          const raDate = project.raDate;
+          assert.equal(raDate, null);
         });
     });
   });
