@@ -320,7 +320,7 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query().findById(projectId))
         .then(project => {
-          const expectedRADate = moment(project.expiryDate).add({ months: 6 }).format('YYYY-MM-DD');
+          const expectedRADate = moment(project.expiryDate).add({ months: 6 }).toISOString();
           assert.equal(project.raDate, expectedRADate);
         });
     });
@@ -337,7 +337,7 @@ describe('Project resolver', () => {
           title: 'title of non RA project'
         }
       };
-      const raDate = moment().add({ years: 5, months: 6 }).format('YYYY-MM-DD');
+      const raDate = moment().add({ years: 5, months: 6 }).toISOString();
       return Promise.resolve()
         .then(() => this.models.Project.query().findById(projectId).patch({ raDate }))
         .then(() => this.models.ProjectVersion.query().insert(version))
@@ -1095,9 +1095,8 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query().findById(projectId))
         .then(project => {
-          const expected = moment().add(6, 'months').format('YYYY-MM-DD');
-          const raDate = project.raDate;
-          assert.equal(raDate, expected);
+          const expected = moment(project.revocationDate).add(6, 'months').toISOString();
+          assert.equal(project.raDate, expected);
         });
     });
 
@@ -1120,9 +1119,8 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query().findById(projectId))
         .then(project => {
-          const expected = moment().add(6, 'months').format('YYYY-MM-DD');
-          const raDate = project.raDate;
-          assert.equal(raDate, expected);
+          const expected = moment(project.revocationDate).add(6, 'months').toISOString();
+          assert.equal(project.raDate, expected);
         });
     });
 
@@ -1140,13 +1138,15 @@ describe('Project resolver', () => {
         retrospectiveAssessment: false
       };
 
+      const raDate = moment().add(6, 'months').toISOString();
+
       return Promise.resolve()
+        .then(() => this.models.Project.query().findById(projectId).patch({ raDate }))
         .then(() => this.models.ProjectVersion.query().where({ projectId }).patch({ data }))
         .then(() => this.project(opts))
         .then(() => this.models.Project.query().findById(projectId))
         .then(project => {
-          const raDate = project.raDate;
-          assert.equal(raDate, null);
+          assert.equal(project.raDate, null);
         });
     });
   });
