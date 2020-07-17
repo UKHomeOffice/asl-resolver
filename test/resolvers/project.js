@@ -943,6 +943,97 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('transfer-draft', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          {
+            id: 8202,
+            name: 'University of Life'
+          },
+          {
+            id: 8203,
+            name: 'Unassociated Establishment'
+          }
+        ]))
+        .then(() => this.models.Permission.query().insert([
+          {
+            establishmentId: 8201,
+            profileId,
+            role: 'basic'
+          },
+          {
+            establishmentId: 8202,
+            profileId,
+            role: 'basic'
+          }
+        ]).returning('*'))
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          },
+          {
+            id: projectId2,
+            status: 'inactive',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]));
+    });
+
+    it('cannot change the establishment for a non-draft project', () => {
+      const opts = {
+        action: 'transfer-draft',
+        id: projectId,
+        data: {
+          establishmentId: 8202
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .catch(err => {
+          assert.equal(err.message, 'Cannot transfer non-draft projects');
+        });
+    });
+
+    it('cannot transfer the project to an establishment the licence holder is not associated with', () => {
+      const opts = {
+        action: 'transfer-draft',
+        id: projectId2,
+        data: {
+          establishmentId: 8203
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .catch(err => {
+          assert.equal(err.message, 'Cannot transfer to an establishment the licence holder is not associated with');
+        });
+    });
+
+    it('can change the primary establishment for a draft project', () => {
+      const opts = {
+        action: 'transfer-draft',
+        id: projectId2,
+        data: {
+          establishmentId: 8202
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId2))
+        .then(project => {
+          assert.equal(project.establishmentId, 8202);
+        });
+    });
+  });
+
   describe('delete-amendments', () => {
     beforeEach(() => {
       return Promise.resolve()
