@@ -1,5 +1,7 @@
 const assert = require('assert');
 const uuid = require('uuid/v4');
+const jsondiff = require('jsondiffpatch').create();
+
 const { projectVersion } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
@@ -90,6 +92,22 @@ describe('ProjectVersion resolver', () => {
         .then(version => {
           assert.equal(version.data.protocols.length, 1);
           assert.equal(version.data.protocols[0].title, 'TEST');
+        });
+    });
+
+    it('sets ra flag to true if training licence', () => {
+      const opts = {
+        action: 'patch',
+        id: versionId,
+        data: {
+          patch: jsondiff.diff({}, { 'training-licence': true })
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.projectVersion(opts))
+        .then(() => this.models.ProjectVersion.query().findById(versionId))
+        .then(version => {
+          assert.equal(version.raCompulsory, true);
         });
     });
 
