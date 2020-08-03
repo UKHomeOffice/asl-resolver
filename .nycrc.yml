@@ -1,6 +1,6 @@
 all: true
 include:
-  - lib/**
+  - lib/resolvers/**
 reporter:
   - text
   - html
