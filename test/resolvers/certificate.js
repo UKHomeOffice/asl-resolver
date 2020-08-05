@@ -45,7 +45,7 @@ describe('Certificate resolver', () => {
         action: 'create',
         data: {
           profileId,
-          modules: [ { module: 'PILB' } ],
+          modules: [ 'PILB' ],
           species: ['mice']
         }
       };
@@ -68,7 +68,7 @@ describe('Certificate resolver', () => {
       return this.models.Certificate.query().insert({
         id,
         profileId,
-        modules: [ { module: 'PILB' } ],
+        modules: [ 'PILB' ],
         species: ['mice']
       });
     });
