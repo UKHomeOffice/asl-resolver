@@ -3,6 +3,8 @@ const settings = require('@asl/schema/knexfile').test;
 
 const tables = [
   'Changelog',
+  'TrainingPil',
+  'TrainingCourse',
   'ProjectProfile',
   'ProjectVersion',
   'Project',
