@@ -252,10 +252,10 @@ describe('PIL resolver', () => {
         };
         return Promise.resolve()
           .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(() => this.models.PIL.query().findById(opts.id).withGraphFetched('profile'))
           .then(pil => {
             assert.equal(pil.status, 'active', 'pil is active');
-            assert(pil.licenceNumber, 'pil has a licence number');
+            assert(pil.profile.pilLicenceNumber, 'profile has a PIL licence number');
             assert(pil.issueDate, 'pil has an issue date');
             assert(moment(pil.issueDate).isValid(), 'pil issue date is a valid date');
             assert(pil.reviewDate, 'pil has a review date');
@@ -268,46 +268,48 @@ describe('PIL resolver', () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
       const originalRevocationDate = moment('2019-10-02 12:00:00');
 
-      return this.models.PIL.query().insert({
-        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-        profileId: PILH.id,
-        establishmentId: 8201,
-        status: 'revoked',
-        issueDate: originalIssueDate.toISOString(),
-        revocationDate: originalRevocationDate.toISOString(),
-        licenceNumber: 'XYZ-987',
-        procedures: ['A'],
-        species: ['mice']
-      }).then(() => {
-        const opts = {
-          action: 'grant',
+      return Promise.resolve()
+        .then(() => this.models.PIL.query().insert({
           id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-          changedBy: PILH.id,
-          data: {
-            procedures: ['A', 'B'],
-            species: ['mice', 'rats']
-          }
-        };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.equal(pil.licenceNumber, 'XYZ-987');
-            assert.equal(pil.status, 'revoked', 'old pil should still be revoked');
-            assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'old pil issue date should not have been changed');
-          })
-          .then(() => this.models.PIL.query().where({ licenceNumber: 'XYZ-987' }))
-          .then(pils => {
-            assert.equal(pils.length, 2, 'A new PIL record should be created with the same licence number');
-            const pil = pils.find(p => p.status === 'active');
-            assert.equal(pil.establishmentId, 8201);
-            assert.deepEqual(pil.species, ['mice', 'rats']);
-            assert.deepEqual(pil.procedures, ['A', 'B']);
-            assert(moment(pil.issueDate).isSame(moment(), 'day'), 'new pil issue date should be todays date');
-            assert(moment(pil.reviewDate).isSame(moment().add(5, 'years'), 'day'), 'new pil review date should be 5 years time');
-            assert.equal(pil.revocationDate, null);
-          });
-      });
+          profileId: PILH.id,
+          establishmentId: 8201,
+          status: 'revoked',
+          issueDate: originalIssueDate.toISOString(),
+          revocationDate: originalRevocationDate.toISOString(),
+          procedures: ['A'],
+          species: ['mice']
+        }))
+        .then(() => this.models.Profile.query().patchAndFetchById(PILH.id, { pilLicenceNumber: 'XYZ-987' }))
+        .then(() => {
+          const opts = {
+            action: 'grant',
+            id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+            changedBy: PILH.id,
+            data: {
+              procedures: ['A', 'B'],
+              species: ['mice', 'rats']
+            }
+          };
+          return Promise.resolve()
+            .then(() => this.pil(opts))
+            .then(() => this.models.PIL.query().findById(opts.id).withGraphFetched('profile'))
+            .then(pil => {
+              assert.equal(pil.profile.pilLicenceNumber, 'XYZ-987');
+              assert.equal(pil.status, 'revoked', 'old pil should still be revoked');
+              assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'old pil issue date should not have been changed');
+            })
+            .then(() => this.models.PIL.query().where({ profileId: PILH.id }))
+            .then(pils => {
+              assert.equal(pils.length, 2, 'A new PIL record should be created with the same licence number');
+              const pil = pils.find(p => p.status === 'active');
+              assert.equal(pil.establishmentId, 8201);
+              assert.deepEqual(pil.species, ['mice', 'rats']);
+              assert.deepEqual(pil.procedures, ['A', 'B']);
+              assert(moment(pil.issueDate).isSame(moment(), 'day'), 'new pil issue date should be todays date');
+              assert(moment(pil.reviewDate).isSame(moment().add(5, 'years'), 'day'), 'new pil review date should be 5 years time');
+              assert.equal(pil.revocationDate, null);
+            });
+        });
     });
 
     it('amendments do not reset the issue date but update the review date', () => {
