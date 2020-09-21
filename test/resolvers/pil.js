@@ -15,6 +15,19 @@ const PILH = {
   telephone: '01234567890'
 };
 
+const HOLC = {
+  id: 'f0835b01-00a0-4c7f-954c-13ed2ef7efd0',
+  userId: 'def456',
+  title: 'Dr',
+  firstName: 'Bruce',
+  lastName: 'Banner',
+  address: '1 Some Road',
+  postcode: 'A1 1AA',
+  email: 'holc@example.com',
+  telephone: '01234567890',
+  pilLicenceNumber: 'I1234567890'
+};
+
 const LICENSING = {
   id: 'a942ffc7-e7ca-4d76-a001-0b5048a057d2',
   firstName: 'Li Sen',
@@ -48,7 +61,7 @@ describe('PIL resolver', () => {
         }
       ]))
       .then(() => this.models.Profile.query().insertGraph(
-        [ PILH, LICENSING ],
+        [ PILH, HOLC, LICENSING ],
         { relate: true }
       ));
   });
@@ -381,6 +394,28 @@ describe('PIL resolver', () => {
             assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
             assert(pil.reviewDate, 'pil has a review date');
             assert.equal(pil.reviewDate, originalReviewDate.toISOString(), 'pil review date should be 5 years from original issue date');
+          });
+      });
+    });
+
+    it('creates a licence number if the user does not have one', () => {
+      return this.models.PIL.query().insert({
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        profileId: PILH.id,
+        establishmentId: 8201,
+        procedures: ['A']
+      }).then(() => {
+        const opts = {
+          action: 'grant',
+          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+          changedBy: HOLC.id,
+          data: {}
+        };
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id).withGraphFetched('profile'))
+          .then(pil => {
+            assert(pil.profile.pilLicenceNumber, 'profile has a PIL licence number');
           });
       });
     });
