@@ -50,11 +50,11 @@ describe('FeeWaiver resolver', () => {
 
   describe('create', () => {
 
-    it('adds a FeeWaiver record for the PIL/establishment/year', () => {
+    it('adds a FeeWaiver record for the profile/establishment/year', () => {
       const params = {
         action: 'create',
         data: {
-          pilId: PIL_ID,
+          profileId: PROFILE_ID,
           establishmentId: 8201,
           year: 2019,
           comment: 'Test comment'
@@ -64,20 +64,20 @@ describe('FeeWaiver resolver', () => {
 
       return this.resolver(params)
         .then(() => {
-          return this.models.FeeWaiver.query().where({ pilId: PIL_ID, establishmentId: 8201, year: 2019 });
+          return this.models.FeeWaiver.query().where({ profileId: PROFILE_ID, establishmentId: 8201, year: 2019 });
         })
         .then(results => {
           assert.equal(results.length, 1);
-          assert.equal(results[0].profileId, ASRU_ID);
+          assert.equal(results[0].waivedById, ASRU_ID);
           assert.equal(results[0].comment, 'Test comment');
         });
     });
 
-    it('adds a single record if called mutiple times with the same PIL/establishment/year', () => {
+    it('adds a single record if called mutiple times with the same profile/establishment/year', () => {
       const params = {
         action: 'create',
         data: {
-          pilId: PIL_ID,
+          profileId: PROFILE_ID,
           establishmentId: 8201,
           year: 2019,
           comment: 'Test comment'
@@ -90,14 +90,14 @@ describe('FeeWaiver resolver', () => {
         .then(() => this.resolver(params))
         .then(() => this.resolver(params))
         .then(() => {
-          return this.models.FeeWaiver.query().where({ pilId: PIL_ID, establishmentId: 8201, year: 2019 });
+          return this.models.FeeWaiver.query().where({ profileId: PROFILE_ID, establishmentId: 8201, year: 2019 });
         })
         .then(results => {
           assert.equal(results.length, 1);
           assert.equal(results[0].establishmentId, 8201);
-          assert.equal(results[0].pilId, PIL_ID);
+          assert.equal(results[0].profileId, PROFILE_ID);
           assert.equal(results[0].year, 2019);
-          assert.equal(results[0].profileId, ASRU_ID);
+          assert.equal(results[0].waivedById, ASRU_ID);
           assert.equal(results[0].comment, 'Test comment');
         });
     });
@@ -106,10 +106,10 @@ describe('FeeWaiver resolver', () => {
 
   describe('delete', () => {
 
-    it('removes any existing record for the PIL/establishment/year', () => {
+    it('removes any existing record for the profile/establishment/year', () => {
       const params = {
         data: {
-          pilId: PIL_ID,
+          profileId: PROFILE_ID,
           establishmentId: 8201,
           year: 2019,
           comment: 'Test comment'
@@ -122,7 +122,7 @@ describe('FeeWaiver resolver', () => {
           return this.resolver({ ...params, action: 'create' });
         })
         .then(() => {
-          return this.models.FeeWaiver.query().where({ pilId: PIL_ID, establishmentId: 8201, year: 2019 });
+          return this.models.FeeWaiver.query().where({ profileId: PROFILE_ID, establishmentId: 8201, year: 2019 });
         })
         .then(results => {
           assert.equal(results.length, 1);
@@ -131,7 +131,7 @@ describe('FeeWaiver resolver', () => {
           return this.resolver({ ...params, action: 'delete' });
         })
         .then(() => {
-          return this.models.FeeWaiver.query().where({ pilId: PIL_ID, establishmentId: 8201, year: 2019 });
+          return this.models.FeeWaiver.query().where({ profileId: PROFILE_ID, establishmentId: 8201, year: 2019 });
         })
         .then(results => {
           assert.equal(results.length, 0);
@@ -141,7 +141,7 @@ describe('FeeWaiver resolver', () => {
     it('leaves existing record for a different year', () => {
       const params = {
         data: {
-          pilId: PIL_ID,
+          profileId: PROFILE_ID,
           establishmentId: 8201,
           comment: 'Test comment'
         },
@@ -158,7 +158,7 @@ describe('FeeWaiver resolver', () => {
           return this.resolver({ ...params, action: 'create' });
         })
         .then(() => {
-          return this.models.FeeWaiver.query().where({ pilId: PIL_ID, establishmentId: 8201 });
+          return this.models.FeeWaiver.query().where({ profileId: PROFILE_ID, establishmentId: 8201 });
         })
         .then(results => {
           assert.equal(results.length, 2);
@@ -168,11 +168,11 @@ describe('FeeWaiver resolver', () => {
           return this.resolver({ ...params, action: 'delete' });
         })
         .then(() => {
-          return this.models.FeeWaiver.query().where({ pilId: PIL_ID, establishmentId: 8201 });
+          return this.models.FeeWaiver.query().where({ profileId: PROFILE_ID, establishmentId: 8201 });
         })
         .then(results => {
           assert.equal(results.length, 1);
-          assert.equal(results[0].pilId, PIL_ID);
+          assert.equal(results[0].profileId, PROFILE_ID);
           assert.equal(results[0].establishmentId, 8201);
           assert.equal(results[0].year, 2019);
         });
