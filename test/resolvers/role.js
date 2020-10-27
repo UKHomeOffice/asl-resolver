@@ -4,6 +4,7 @@ const { role } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
 const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
+const PROFILE_ID_2 = '80aed65b-ff2b-409f-918b-0cdab4a6d082';
 const ROLE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08c';
 const HOLC_ROLE_ID = '35a51aed-d489-4d73-a1fe-599947beb72e';
 
@@ -38,12 +39,20 @@ describe('Role resolver', () => {
           updatedAt: '2019-01-01T10:38:43.666Z'
         }
       ]))
-      .then(() => this.models.Profile.query().insert({
-        id: PROFILE_ID,
-        firstName: 'Sterling',
-        lastName: 'Archer',
-        email: 'sterling@archer.com'
-      }))
+      .then(() => this.models.Profile.query().insert([
+        {
+          id: PROFILE_ID,
+          firstName: 'Sterling',
+          lastName: 'Archer',
+          email: 'sterling@archer.com'
+        },
+        {
+          id: PROFILE_ID_2,
+          firstName: 'James',
+          lastName: 'Herriot',
+          email: 'jh@example.com'
+        }
+      ]))
       .then(() => this.models.Role.query().insert([
         {
           id: ROLE_ID,
@@ -150,6 +159,25 @@ describe('Role resolver', () => {
         .then(establishment => {
           assert.ok(establishment);
           assert.equal(establishment.updatedAt, updatedAt);
+        });
+    });
+
+    it('sets the rcvs number to the profile if creating an nvs', () => {
+      const opts = {
+        action: 'create',
+        data: {
+          establishmentId: 8201,
+          profileId: PROFILE_ID_2,
+          rcvsNumber: '12345',
+          type: 'nvs'
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.role(opts))
+        .then(() => this.models.Profile.query().findById(PROFILE_ID_2))
+        .then(profile => {
+          assert.ok(profile);
+          assert.equal(profile.rcvsNumber, '12345');
         });
     });
   });
