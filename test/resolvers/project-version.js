@@ -18,10 +18,16 @@ describe('ProjectVersion resolver', () => {
 
   beforeEach(() => {
     return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
-        id: 8201,
-        name: 'University of Croydon'
-      }))
+      .then(() => this.models.Establishment.query().insert([
+        {
+          id: 8201,
+          name: 'University of Croydon'
+        },
+        {
+          id: 8202,
+          name: 'Marvell Pharmaceutical'
+        }
+      ]))
       .then(() => this.models.Profile.query().insert({
         id: profileId,
         userId: 'abc123',
@@ -109,6 +115,48 @@ describe('ProjectVersion resolver', () => {
         .then(version => {
           assert.equal(version.raCompulsory, true);
         });
+    });
+
+    describe('Additional availability', () => {
+      it('creates new ProjectEstablishment models for additional establishments', () => {
+        const establishments = [
+          {
+            'establishment-id': 8202
+          }
+        ];
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { establishments })
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ projectId, establishmentId: 8202 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.establishmentId, 8202);
+            assert.equal(projectEstablishment.projectId, projectId);
+            assert.equal(projectEstablishment.status, 'draft');
+          });
+      });
+
+      it('removed draft ProjectEstablishment relations if removed from data', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { establishment: [] })
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId, status: 'draft' }))
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment, null);
+          });
+      });
     });
 
   });

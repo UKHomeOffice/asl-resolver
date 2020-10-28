@@ -2,6 +2,7 @@ const assert = require('assert');
 const moment = require('moment');
 const { project } = require('../../lib/resolvers');
 const db = require('../helpers/db');
+const generateUuid = require('uuid/v4');
 
 const profileId = 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9';
 const projectId = '1da9b8b7-b12b-49f3-98be-745d286949a7';
@@ -28,10 +29,16 @@ describe('Project resolver', () => {
 
   beforeEach(() => {
     return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
-        id: 8201,
-        name: 'University of Croydon'
-      }))
+      .then(() => this.models.Establishment.query().insert([
+        {
+          id: 8201,
+          name: 'University of Croydon'
+        },
+        {
+          id: 8202,
+          name: 'Marvell Pharmaceutical'
+        }
+      ]))
       .then(() => this.models.Profile.query().insert({
         id: profileId,
         userId: 'abc123',
@@ -717,6 +724,123 @@ describe('Project resolver', () => {
               assert.equal(project.amendedDate, null, 'amendment date was not set');
             });
         });
+    });
+
+    describe('Additional availability', () => {
+      it('activates existing projectEstablishment joins', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId2
+        };
+        const versions = [
+          {
+            projectId: projectId2,
+            status: 'submitted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ]
+            }
+          }
+        ];
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(versions))
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId: projectId2, status: 'draft' }))
+          .then(() => this.project(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId: projectId2 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.status, 'active');
+          });
+      });
+
+      it('deactivates existing joins that have been removed', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId2
+        };
+        const lastGrantedVersion = generateUuid();
+        const versions = [
+          {
+            id: lastGrantedVersion,
+            projectId: projectId2,
+            status: 'granted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ]
+            },
+            createdAt: new Date('2019-10-11').toISOString(),
+            updatedAt: new Date('2019-10-11').toISOString()
+          },
+          {
+            id: generateUuid(),
+            projectId: projectId2,
+            status: 'submitted',
+            data: {
+              establishments: []
+            },
+            createdAt: new Date('2020-10-11').toISOString(),
+            updatedAt: new Date('2020-10-11').toISOString()
+          }
+        ];
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(versions))
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId: projectId2, status: 'active' }))
+          .then(() => this.project(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId: projectId2 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.status, 'removed');
+            assert.equal(projectEstablishment.versionId, lastGrantedVersion);
+          });
+      });
+
+      it('reactivates removed joins that are readded', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId2
+        };
+        const lastGrantedVersion = generateUuid();
+        const versions = [
+          {
+            id: lastGrantedVersion,
+            projectId: projectId2,
+            status: 'granted',
+            data: {
+              establishments: []
+            },
+            createdAt: new Date('2019-10-11').toISOString(),
+            updatedAt: new Date('2019-10-11').toISOString()
+          },
+          {
+            id: generateUuid(),
+            projectId: projectId2,
+            status: 'submitted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ]
+            },
+            createdAt: new Date('2020-10-11').toISOString(),
+            updatedAt: new Date('2020-10-11').toISOString()
+          }
+        ];
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(versions))
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId: projectId2, status: 'removed', versionId: lastGrantedVersion }))
+          .then(() => this.project(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId: projectId2 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.status, 'active');
+            assert.equal(projectEstablishment.versionId, null);
+          });
+      });
+
     });
   });
 

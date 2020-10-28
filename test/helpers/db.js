@@ -5,6 +5,7 @@ const tables = [
   'Changelog',
   'TrainingPil',
   'TrainingCourse',
+  'ProjectEstablishment',
   'ProjectProfile',
   'ProjectVersion',
   'Project',
@@ -28,7 +29,12 @@ module.exports = {
   init: () => Schema(settings.connection),
   clean: schema => {
     return tables.reduce((p, table) => {
-      return p.then(() => schema[table].queryWithDeleted().hardDelete());
+      return p.then(() => {
+        if (schema[table].queryWithDeleted) {
+          return schema[table].queryWithDeleted().hardDelete();
+        }
+        return schema[table].query().delete();
+      });
     }, Promise.resolve());
   }
 };
