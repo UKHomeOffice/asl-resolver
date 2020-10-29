@@ -977,7 +977,7 @@ describe('Project resolver', () => {
     beforeEach(() => {
       return Promise.resolve()
         .then(() => this.models.Establishment.query().insert({
-          id: 8202,
+          id: 8203,
           name: 'Univerty of Cheese'
         }))
         .then(() => this.models.Project.query().insert({
@@ -994,7 +994,7 @@ describe('Project resolver', () => {
         action: 'transfer',
         id: projectId,
         data: {
-          establishmentId: 8202
+          establishmentId: 8203
         }
       };
       return Promise.resolve()
@@ -1003,7 +1003,7 @@ describe('Project resolver', () => {
           status: 'draft',
           data: {
             foo: 'bar',
-            transferToEstablishment: 8202
+            transferToEstablishment: 8203
           }
         }))
         .then(() => this.project(opts))
@@ -1018,7 +1018,7 @@ describe('Project resolver', () => {
           action: 'transfer',
           id: projectId,
           data: {
-            establishmentId: 8202
+            establishmentId: 8203
           }
         };
         return Promise.resolve()
@@ -1027,14 +1027,14 @@ describe('Project resolver', () => {
             status: 'submitted',
             data: {
               foo: 'bar',
-              transferToEstablishment: 8202
+              transferToEstablishment: 8203
             }
           }))
           .then(() => this.project(opts));
       });
 
       it('clones the project into the new establishment updating transferredInDate and pointers to old est and proj', async () => {
-        const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
+        const newProject = await this.models.Project.query().findOne({ establishmentId: 8203 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
         assert.equal(newProject.title, 'Project to transfer');
@@ -1046,7 +1046,7 @@ describe('Project resolver', () => {
 
       it('creates a clone of the version under the new project, removing the transfer flag', () => {
         return Promise.resolve()
-          .then(() => this.models.Project.query().findOne({ establishmentId: 8202 }))
+          .then(() => this.models.Project.query().findOne({ establishmentId: 8203 }))
           .then(({ id }) => this.models.ProjectVersion.query().findOne({ projectId: id }))
           .then(version => {
             assert.equal(version.status, 'granted');
@@ -1056,12 +1056,12 @@ describe('Project resolver', () => {
       });
 
       it('updates the status of the old project to transferred, updates transferredOutDate and new proj/est pointers', async () => {
-        const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
+        const newProject = await this.models.Project.query().findOne({ establishmentId: 8203 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
         assert.equal(oldProject.status, 'transferred');
         assert(isNowish(oldProject.transferredOutDate));
-        assert.equal(oldProject.transferEstablishmentId, 8202);
+        assert.equal(oldProject.transferEstablishmentId, 8203);
         assert.equal(oldProject.transferProjectId, newProject.id);
       });
     });
@@ -1072,12 +1072,12 @@ describe('Project resolver', () => {
       return Promise.resolve()
         .then(() => this.models.Establishment.query().insert([
           {
-            id: 8202,
-            name: 'University of Life'
-          },
-          {
             id: 8203,
             name: 'Unassociated Establishment'
+          },
+          {
+            id: 8204,
+            name: 'University of Life'
           }
         ]))
         .then(() => this.models.Permission.query().insert([
@@ -1087,7 +1087,7 @@ describe('Project resolver', () => {
             role: 'basic'
           },
           {
-            establishmentId: 8202,
+            establishmentId: 8204,
             profileId,
             role: 'basic'
           }
@@ -1113,7 +1113,7 @@ describe('Project resolver', () => {
         action: 'transfer-draft',
         id: projectId,
         data: {
-          establishmentId: 8202
+          establishmentId: 8204
         }
       };
 
@@ -1145,7 +1145,7 @@ describe('Project resolver', () => {
         action: 'transfer-draft',
         id: projectId2,
         data: {
-          establishmentId: 8202
+          establishmentId: 8204
         }
       };
 
@@ -1153,7 +1153,7 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query().findById(projectId2))
         .then(project => {
-          assert.equal(project.establishmentId, 8202);
+          assert.equal(project.establishmentId, 8204);
         });
     });
   });
