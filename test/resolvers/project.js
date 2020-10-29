@@ -2,6 +2,7 @@ const assert = require('assert');
 const moment = require('moment');
 const { project } = require('../../lib/resolvers');
 const db = require('../helpers/db');
+const generateUuid = require('uuid/v4');
 
 const profileId = 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9';
 const projectId = '1da9b8b7-b12b-49f3-98be-745d286949a7';
@@ -28,10 +29,16 @@ describe('Project resolver', () => {
 
   beforeEach(() => {
     return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
-        id: 8201,
-        name: 'University of Croydon'
-      }))
+      .then(() => this.models.Establishment.query().insert([
+        {
+          id: 8201,
+          name: 'University of Croydon'
+        },
+        {
+          id: 8202,
+          name: 'Marvell Pharmaceutical'
+        }
+      ]))
       .then(() => this.models.Profile.query().insert({
         id: profileId,
         userId: 'abc123',
@@ -718,6 +725,123 @@ describe('Project resolver', () => {
             });
         });
     });
+
+    describe('Additional availability', () => {
+      it('activates existing projectEstablishment joins', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId2
+        };
+        const versions = [
+          {
+            projectId: projectId2,
+            status: 'submitted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ]
+            }
+          }
+        ];
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(versions))
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId: projectId2, status: 'draft' }))
+          .then(() => this.project(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId: projectId2 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.status, 'active');
+          });
+      });
+
+      it('deactivates existing joins that have been removed', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId2
+        };
+        const lastGrantedVersion = generateUuid();
+        const versions = [
+          {
+            id: lastGrantedVersion,
+            projectId: projectId2,
+            status: 'granted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ]
+            },
+            createdAt: new Date('2019-10-11').toISOString(),
+            updatedAt: new Date('2019-10-11').toISOString()
+          },
+          {
+            id: generateUuid(),
+            projectId: projectId2,
+            status: 'submitted',
+            data: {
+              establishments: []
+            },
+            createdAt: new Date('2020-10-11').toISOString(),
+            updatedAt: new Date('2020-10-11').toISOString()
+          }
+        ];
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(versions))
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId: projectId2, status: 'active' }))
+          .then(() => this.project(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId: projectId2 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.status, 'removed');
+            assert.equal(projectEstablishment.versionId, lastGrantedVersion);
+          });
+      });
+
+      it('reactivates removed joins that are readded', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId2
+        };
+        const lastGrantedVersion = generateUuid();
+        const versions = [
+          {
+            id: lastGrantedVersion,
+            projectId: projectId2,
+            status: 'granted',
+            data: {
+              establishments: []
+            },
+            createdAt: new Date('2019-10-11').toISOString(),
+            updatedAt: new Date('2019-10-11').toISOString()
+          },
+          {
+            id: generateUuid(),
+            projectId: projectId2,
+            status: 'submitted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ]
+            },
+            createdAt: new Date('2020-10-11').toISOString(),
+            updatedAt: new Date('2020-10-11').toISOString()
+          }
+        ];
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(versions))
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId: projectId2, status: 'removed', versionId: lastGrantedVersion }))
+          .then(() => this.project(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId: projectId2 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.status, 'active');
+            assert.equal(projectEstablishment.versionId, null);
+          });
+      });
+
+    });
   });
 
   describe('create', () => {
@@ -853,7 +977,7 @@ describe('Project resolver', () => {
     beforeEach(() => {
       return Promise.resolve()
         .then(() => this.models.Establishment.query().insert({
-          id: 8202,
+          id: 8203,
           name: 'Univerty of Cheese'
         }))
         .then(() => this.models.Project.query().insert({
@@ -870,7 +994,7 @@ describe('Project resolver', () => {
         action: 'transfer',
         id: projectId,
         data: {
-          establishmentId: 8202
+          establishmentId: 8203
         }
       };
       return Promise.resolve()
@@ -879,7 +1003,7 @@ describe('Project resolver', () => {
           status: 'draft',
           data: {
             foo: 'bar',
-            transferToEstablishment: 8202
+            transferToEstablishment: 8203
           }
         }))
         .then(() => this.project(opts))
@@ -894,7 +1018,7 @@ describe('Project resolver', () => {
           action: 'transfer',
           id: projectId,
           data: {
-            establishmentId: 8202
+            establishmentId: 8203
           }
         };
         return Promise.resolve()
@@ -903,14 +1027,14 @@ describe('Project resolver', () => {
             status: 'submitted',
             data: {
               foo: 'bar',
-              transferToEstablishment: 8202
+              transferToEstablishment: 8203
             }
           }))
           .then(() => this.project(opts));
       });
 
       it('clones the project into the new establishment updating transferredInDate and pointers to old est and proj', async () => {
-        const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
+        const newProject = await this.models.Project.query().findOne({ establishmentId: 8203 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
         assert.equal(newProject.title, 'Project to transfer');
@@ -922,7 +1046,7 @@ describe('Project resolver', () => {
 
       it('creates a clone of the version under the new project, removing the transfer flag', () => {
         return Promise.resolve()
-          .then(() => this.models.Project.query().findOne({ establishmentId: 8202 }))
+          .then(() => this.models.Project.query().findOne({ establishmentId: 8203 }))
           .then(({ id }) => this.models.ProjectVersion.query().findOne({ projectId: id }))
           .then(version => {
             assert.equal(version.status, 'granted');
@@ -932,12 +1056,12 @@ describe('Project resolver', () => {
       });
 
       it('updates the status of the old project to transferred, updates transferredOutDate and new proj/est pointers', async () => {
-        const newProject = await this.models.Project.query().findOne({ establishmentId: 8202 });
+        const newProject = await this.models.Project.query().findOne({ establishmentId: 8203 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
         assert.equal(oldProject.status, 'transferred');
         assert(isNowish(oldProject.transferredOutDate));
-        assert.equal(oldProject.transferEstablishmentId, 8202);
+        assert.equal(oldProject.transferEstablishmentId, 8203);
         assert.equal(oldProject.transferProjectId, newProject.id);
       });
     });
@@ -948,12 +1072,12 @@ describe('Project resolver', () => {
       return Promise.resolve()
         .then(() => this.models.Establishment.query().insert([
           {
-            id: 8202,
-            name: 'University of Life'
-          },
-          {
             id: 8203,
             name: 'Unassociated Establishment'
+          },
+          {
+            id: 8204,
+            name: 'University of Life'
           }
         ]))
         .then(() => this.models.Permission.query().insert([
@@ -963,7 +1087,7 @@ describe('Project resolver', () => {
             role: 'basic'
           },
           {
-            establishmentId: 8202,
+            establishmentId: 8204,
             profileId,
             role: 'basic'
           }
@@ -989,7 +1113,7 @@ describe('Project resolver', () => {
         action: 'transfer-draft',
         id: projectId,
         data: {
-          establishmentId: 8202
+          establishmentId: 8204
         }
       };
 
@@ -1021,7 +1145,7 @@ describe('Project resolver', () => {
         action: 'transfer-draft',
         id: projectId2,
         data: {
-          establishmentId: 8202
+          establishmentId: 8204
         }
       };
 
@@ -1029,7 +1153,7 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query().findById(projectId2))
         .then(project => {
-          assert.equal(project.establishmentId, 8202);
+          assert.equal(project.establishmentId, 8204);
         });
     });
   });
