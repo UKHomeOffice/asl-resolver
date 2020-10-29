@@ -133,11 +133,10 @@ describe('ProjectVersion resolver', () => {
         };
         return Promise.resolve()
           .then(() => this.projectVersion(opts))
-          .then(() => this.models.ProjectEstablishment.query().where({ projectId, establishmentId: 8202 }).first())
-          .then(projectEstablishment => {
-            assert.equal(projectEstablishment.establishmentId, 8202);
-            assert.equal(projectEstablishment.projectId, projectId);
-            assert.equal(projectEstablishment.status, 'draft');
+          .then(() => this.models.ProjectEstablishment.query().where({ projectId, establishmentId: 8202 }))
+          .then(projectEstablishments => {
+            assert.equal(projectEstablishments.length, 1);
+            assert.equal(projectEstablishments[0].status, 'draft');
           });
       });
 
