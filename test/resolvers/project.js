@@ -741,7 +741,8 @@ describe('Project resolver', () => {
                 {
                   'establishment-id': 8202
                 }
-              ]
+              ],
+              'other-establishments': true
             }
           }
         ];
@@ -771,7 +772,8 @@ describe('Project resolver', () => {
                 {
                   'establishment-id': 8202
                 }
-              ]
+              ],
+              'other-establishments': true
             },
             createdAt: new Date('2019-10-11').toISOString(),
             updatedAt: new Date('2019-10-11').toISOString()
@@ -781,7 +783,57 @@ describe('Project resolver', () => {
             projectId: projectId2,
             status: 'submitted',
             data: {
-              establishments: []
+              establishments: [],
+              'other-establishments': true
+            },
+            createdAt: new Date('2020-10-11').toISOString(),
+            updatedAt: new Date('2020-10-11').toISOString()
+          }
+        ];
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(versions))
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId: projectId2, status: 'active' }))
+          .then(() => this.project(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId: projectId2 }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment.status, 'removed');
+            assert.equal(projectEstablishment.versionId, lastGrantedVersion);
+          });
+      });
+
+      it('deactivates existing joins if no other establishments selected', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId2
+        };
+        const lastGrantedVersion = generateUuid();
+        const versions = [
+          {
+            id: lastGrantedVersion,
+            projectId: projectId2,
+            status: 'granted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ],
+              'other-establishments': true
+            },
+            createdAt: new Date('2019-10-11').toISOString(),
+            updatedAt: new Date('2019-10-11').toISOString()
+          },
+          {
+            id: generateUuid(),
+            projectId: projectId2,
+            status: 'submitted',
+            data: {
+              establishments: [
+                {
+                  'establishment-id': 8202
+                }
+              ],
+              'other-establishments': false
             },
             createdAt: new Date('2020-10-11').toISOString(),
             updatedAt: new Date('2020-10-11').toISOString()
@@ -824,7 +876,8 @@ describe('Project resolver', () => {
                 {
                   'establishment-id': 8202
                 }
-              ]
+              ],
+              'other-establishments': true
             },
             createdAt: new Date('2020-10-11').toISOString(),
             updatedAt: new Date('2020-10-11').toISOString()
