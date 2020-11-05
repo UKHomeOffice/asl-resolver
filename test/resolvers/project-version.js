@@ -128,7 +128,7 @@ describe('ProjectVersion resolver', () => {
           action: 'patch',
           id: versionId,
           data: {
-            patch: jsondiff.diff({}, { establishments })
+            patch: jsondiff.diff({}, { establishments, 'other-establishments': true })
           }
         };
         return Promise.resolve()
@@ -140,12 +140,34 @@ describe('ProjectVersion resolver', () => {
           });
       });
 
-      it('removed draft ProjectEstablishment relations if removed from data', () => {
+      it('removes draft ProjectEstablishment relations if removed from data', () => {
+        const establishments = [
+          {
+            'establishment-id': 8202
+          }
+        ];
         const opts = {
           action: 'patch',
           id: versionId,
           data: {
-            patch: jsondiff.diff({}, { establishment: [] })
+            patch: jsondiff.diff({}, { establishments, 'other-establishments': false })
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId, status: 'draft' }))
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment, null);
+          });
+      });
+
+      it('removes draft ProjectEstablishment relations no other establishments selected', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { establishments: [], 'other-establishments': false })
           }
         };
         return Promise.resolve()
