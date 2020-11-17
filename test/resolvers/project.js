@@ -387,6 +387,95 @@ describe('Project resolver', () => {
         });
     });
 
+    it('removes soft deleted top level conditions', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const versionId = generateUuid();
+      const version = {
+        id: versionId,
+        projectId,
+        status: 'submitted',
+        data: {
+          conditions: [
+            {
+              autoAdded: true,
+              key: 'non-purpose-bred-sched-2',
+              path: 'non-purpose-bred-sched-2.versions.0',
+              type: 'condition',
+              deleted: true
+            },
+            {
+              autoAdded: true,
+              key: 'code-of-practice',
+              path: 'code-of-practice.versions.0',
+              type: 'condition'
+            }
+          ]
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().findById(versionId))
+        .then(version => {
+          assert.equal(version.data.conditions.length, 1);
+          assert.equal(version.data.conditions[0].key, 'code-of-practice');
+        });
+    });
+
+    it('removes soft deleted protocol conditions', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const versionId = generateUuid();
+      const version = {
+        id: versionId,
+        projectId,
+        status: 'submitted',
+        data: {
+          protocols: [
+            {
+              conditions: [
+                {
+                  key: 'deleted-condition',
+                  deleted: true
+                },
+                {
+                  key: 'non-deleted-condition'
+                }
+              ]
+            },
+            {
+              conditions: [
+                {
+                  key: 'deleted-condition-2',
+                  deleted: true
+                },
+                {
+                  key: 'deleted-condition-3',
+                  deleted: true
+                }
+              ]
+            }
+          ]
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().findById(versionId))
+        .then(version => {
+          assert.equal(version.data.protocols[0].conditions.length, 1);
+          assert.equal(version.data.protocols[0].conditions[0].key, 'non-deleted-condition');
+          assert.equal(version.data.protocols[1].conditions.length, 0);
+        });
+    });
+
     it('resolves if project version is already granted', () => {
       const opts = {
         action: 'grant',
