@@ -1047,7 +1047,8 @@ describe('Project resolver', () => {
         establishments: [
           {
             'establishment-id': 8201,
-            name: 'University of Croydon'
+            name: 'University of Croydon',
+            someField: 'Some content'
           }
         ],
         transferToEstablishment: 8202,
@@ -1055,7 +1056,11 @@ describe('Project resolver', () => {
       };
 
       const expected = {
-        establishments: [],
+        establishments: [
+          {
+            someField: 'Some content'
+          }
+        ],
         transferToEstablishment: null,
         transferToEstablishmentName: null
       };
