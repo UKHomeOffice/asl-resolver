@@ -1042,6 +1042,47 @@ describe('Project resolver', () => {
         });
     });
 
+    it('removes establishments and transfer to est from version', () => {
+      const data = {
+        establishments: [
+          {
+            'establishment-id': 8201,
+            name: 'University of Croydon'
+          }
+        ],
+        transferToEstablishment: 8202,
+        transferToEstablishmentName: 'Marvell Pharmaceutical'
+      };
+
+      const expected = {
+        establishments: [],
+        transferToEstablishment: null,
+        transferToEstablishmentName: null
+      };
+
+      const opts = {
+        action: 'create',
+        data: {
+          establishmentId,
+          licenceHolderId: profileId,
+          version: {
+            data
+          }
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query())
+        .then(projects => {
+          assert(projects.length === 1, 'project should have been added');
+          return this.models.ProjectVersion.query().where({ projectId: projects[0].id })
+            .then(versions => {
+              assert(versions.length === 1, 'version should be created');
+              assert.deepEqual(versions[0].data, expected, 'establishment and transfer info should have been stripped');
+            });
+        });
+    });
+
     it('adds id properties to protocol species details if missing', () => {
       const data = {
         title: 'Species IDs',
