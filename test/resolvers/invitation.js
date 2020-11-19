@@ -74,8 +74,8 @@ describe('Invitation resolver', () => {
       return Promise.resolve()
         .then(() => this.invitation({ action: 'create', data }))
         .then(() => this.models.Invitation.query())
-        .then(invitations => {
-          const token = this.jwt.verify(invitations[0].token);
+        .then(async invitations => {
+          const token = await this.jwt.verify(invitations[0].token);
           assert.equal(token.email, 'test@example.com');
           assert.equal(token.establishmentId, 8201);
           assert.equal(token.role, 'admin');

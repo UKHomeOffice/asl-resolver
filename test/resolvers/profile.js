@@ -2,6 +2,7 @@ const assert = require('assert');
 const { profile } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 const Logger = require('../../lib/utils/logger');
+const jwt = require('../../lib/jwt');
 const emailer = require('../helpers/emailer');
 
 const ID_1 = 'e0b49357-237c-4042-b430-a57fc8e1be5f';
@@ -12,8 +13,10 @@ const EST_2 = 8202;
 describe('Profile resolver', () => {
   before(() => {
     this.models = db.init();
+    this.jwt = jwt({ secret: 'hunter2' });
     this.profile = profile({
       models: this.models,
+      jwt: this.jwt,
       keycloak: {
         grantToken: () => Promise.resolve('abc'),
         updateUser: () => Promise.resolve()
@@ -24,6 +27,7 @@ describe('Profile resolver', () => {
   });
 
   beforeEach(() => {
+    emailer.sendEmail.resetHistory();
     return db.clean(this.models)
       .then(() => this.models.Profile.query().insert([
         {
@@ -32,7 +36,8 @@ describe('Profile resolver', () => {
           lastName: 'Archer',
           email: 'sterling@archer.com',
           telephone: '01234567890',
-          dob: '1979-12-01'
+          dob: '1979-12-01',
+          emailConfirmed: false
         }
       ]));
   });
@@ -107,6 +112,44 @@ describe('Profile resolver', () => {
               assert.deepEqual(profile.lastName, params.data.lastName);
               assert.deepEqual(profile.userId, params2.data.userId);
             });
+        });
+    });
+
+    it('sends a confirm email message if address is not already confirmed', () => {
+      const params = {
+        action: 'create',
+        data: {
+          firstName: 'Robert',
+          lastName: 'Fryer',
+          email: 'rob.fryer@example.com',
+          userId: '12345'
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.profile(params))
+        .then(() => {
+          assert.ok(emailer.sendEmail.calledOnce);
+          assert.equal(emailer.sendEmail.lastCall.args[0].template, 'confirm-email');
+        });
+    });
+
+    it('does not send a confirm email message if address is already confirmed', () => {
+      const params = {
+        action: 'create',
+        data: {
+          firstName: 'Robert',
+          lastName: 'Fryer',
+          email: 'rob.fryer@example.com',
+          userId: '12345',
+          emailConfirmed: true
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.profile(params))
+        .then(() => {
+          assert.ok(!emailer.sendEmail.called);
         });
     });
   });
@@ -484,6 +527,45 @@ describe('Profile resolver', () => {
           });
       });
 
+    });
+
+  });
+
+  describe('Confirm email', () => {
+
+    it('marks the emailConfirmed property on the profile as true', () => {
+      const opts = {
+        action: 'confirm-email',
+        data: {},
+        id: ID_1
+      };
+
+      return Promise.resolve()
+        .then(() => this.profile(opts))
+        .then(() => this.models.Profile.query().findById(ID_1))
+        .then(profile => {
+          assert.equal(profile.emailConfirmed, true);
+        });
+    });
+
+  });
+
+  describe('Resend email', () => {
+
+    it('sends a new confirmation email', () => {
+      const opts = {
+        action: 'resend-email',
+        data: {},
+        id: ID_1
+      };
+
+      return Promise.resolve()
+        .then(() => this.profile(opts))
+        .then(() => this.models.Profile.query().findById(ID_1))
+        .then(profile => {
+          assert.ok(emailer.sendEmail.calledOnce);
+          assert.equal(emailer.sendEmail.lastCall.args[0].template, 'confirm-email');
+        });
     });
 
   });
