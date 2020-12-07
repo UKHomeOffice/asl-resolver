@@ -4,13 +4,14 @@ const { project } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 const generateUuid = require('uuid/v4');
 
-const profileId = 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9';
-const projectId = '1da9b8b7-b12b-49f3-98be-745d286949a7';
-const projectId2 = 'd01588c4-cdca-461f-95de-f2bc2b95c9b0';
-const projectToForkId = '55a6373e-1d25-4ae2-806a-fab55f169ca4';
+const profileId = generateUuid();
+const projectId = generateUuid();
+const projectId2 = generateUuid();
+const legacyProject = generateUuid();
+const projectToForkId = generateUuid();
 
-const holcId = 'bfc29d28-85ad-44be-9d65-f18b16c069c7';
-const licensingId = 'ed7e6116-71dd-4531-8bac-40599c464158';
+const holcId = generateUuid();
+const licensingId = generateUuid();
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -263,7 +264,8 @@ describe('Project resolver', () => {
             establishmentId: 8201,
             licenceHolderId: profileId,
             createdAt: new Date('2019-07-11').toISOString(),
-            updatedAt: new Date('2019-07-11').toISOString()
+            updatedAt: new Date('2019-07-11').toISOString(),
+            schemaVersion: 1
           },
           {
             id: projectId2,
@@ -274,9 +276,185 @@ describe('Project resolver', () => {
             establishmentId: 8201,
             licenceHolderId: profileId,
             createdAt: new Date('2019-07-11').toISOString(),
-            updatedAt: new Date('2019-07-11').toISOString()
+            updatedAt: new Date('2019-07-11').toISOString(),
+            schemaVersion: 1
+          },
+          {
+            id: legacyProject,
+            status: 'active',
+            title: 'Legacy project',
+            issueDate: new Date('2019-07-11').toISOString(),
+            expiryDate: new Date('2022-07-11').toISOString(),
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            createdAt: new Date('2019-07-11').toISOString(),
+            updatedAt: new Date('2019-07-11').toISOString(),
+            schemaVersion: 0
           }
         ]));
+    });
+
+    describe('species', () => {
+      it('sets the species from the project version', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+
+        const version = {
+          projectId,
+          status: 'submitted',
+          data: {
+            title: 'Project with species',
+            species: ['mice', 'rats'],
+            'species-other': ['JABU', 'BABU'],
+            'species-other-amphibians': ['FROGGY'],
+            'species-other-birds': ['Phoenix'],
+            'species-other-camelids': ['Humpback'],
+            'species-other-dogs': ['Pug'],
+            'species-other-domestic-fowl': ['Fried chicken'],
+            'species-other-equidae': ['Zebra'],
+            'species-other-fish': ['Blobfish'],
+            'species-other-nhps': ['Bush baby'],
+            'species-other-reptiles': ['Bastard lizard'],
+            'species-other-rodents': ['Kangaroo']
+          }
+        };
+
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.project(opts))
+          .then(() => this.models.Project.query().findById(projectId))
+          .then(project => {
+            const expected = [
+              'Mice',
+              'Rats',
+              'JABU',
+              'BABU',
+              'FROGGY',
+              'Phoenix',
+              'Humpback',
+              'Pug',
+              'Fried chicken',
+              'Zebra',
+              'Blobfish',
+              'Bush baby',
+              'Bastard lizard',
+              'Kangaroo'
+            ];
+            assert.deepEqual(project.species, expected);
+          });
+      });
+
+      it('updates the species from the project version', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+
+        const version = {
+          projectId,
+          status: 'submitted',
+          data: {
+            title: 'Project with species',
+            species: ['mice', 'rats']
+          }
+        };
+
+        return Promise.resolve()
+          .then(() => this.models.Project.query().findById(projectId).patch({ species: ['mice'] }))
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.project(opts))
+          .then(() => this.models.Project.query().findById(projectId))
+          .then(project => {
+            const expected = [
+              'Mice',
+              'Rats'
+            ];
+            assert.deepEqual(project.species, expected);
+          });
+      });
+
+      it('sets species to null if blank', () => {
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+
+        const version = {
+          projectId,
+          status: 'submitted',
+          data: {
+            title: 'Project without species'
+          }
+        };
+
+        return Promise.resolve()
+          .then(() => this.models.Project.query().findById(projectId).patch({ species: ['mice'] }))
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.project(opts))
+          .then(() => this.models.Project.query().findById(projectId))
+          .then(project => {
+            assert.deepEqual(project.species, null);
+          });
+      });
+
+      it('sets species for legacy project', () => {
+        const opts = {
+          action: 'grant',
+          id: legacyProject
+        };
+
+        const version = {
+          projectId: legacyProject,
+          status: 'submitted',
+          data: {
+            title: 'Legacy project with species',
+            protocols: [
+              {
+                species: [
+                  {
+                    speciesId: '2'
+                  },
+                  {
+                    speciesId: '5'
+                  },
+                  {
+                    speciesId: '6'
+                  }
+                ]
+              },
+              {
+                species: [
+                  {
+                    speciesId: '28',
+                    'other-species-type': 'JABU'
+                  },
+                  {
+                    speciesId: '28',
+                    'other-species-type': 'BABU'
+                  }
+                ]
+              }
+            ]
+          }
+        };
+
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.project(opts))
+          .then(() => this.models.Project.query().findById(legacyProject))
+          .then(project => {
+            const expected = [
+              'Amphibians',
+              'Birds',
+              'Camelids',
+              'JABU',
+              'BABU'
+            ];
+            assert.deepEqual(project.species, expected);
+          });
+      });
     });
 
     it('grants a new project updating the issue date, expiry date, title, and status', () => {
