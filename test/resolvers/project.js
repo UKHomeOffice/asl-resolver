@@ -253,6 +253,129 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('submit-draft', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'inactive',
+            title: 'New project',
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            createdAt: new Date('2019-07-11').toISOString(),
+            updatedAt: new Date('2019-07-11').toISOString(),
+            schemaVersion: 1
+          },
+          {
+            id: projectId2,
+            status: 'active',
+            title: 'Active project',
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            createdAt: new Date('2019-07-11').toISOString(),
+            updatedAt: new Date('2019-07-11').toISOString(),
+            schemaVersion: 1,
+            issueDate: new Date('2019-07-11').toISOString(),
+            expiryDate: new Date('2022-07-11').toISOString(),
+            licenceNumber: 'PP-627808'
+          },
+          {
+            id: legacyProject,
+            status: 'inactive',
+            title: 'Legacy draft',
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            createdAt: new Date('2019-07-11').toISOString(),
+            updatedAt: new Date('2019-07-11').toISOString(),
+            schemaVersion: 0
+          }
+        ]));
+    });
+
+    it('sets the species to the project for draft licence', () => {
+      const version = {
+        projectId,
+        data: {
+          species: [
+            'mice',
+            'rats'
+          ]
+        }
+      };
+      const opts = {
+        id: projectId,
+        action: 'submit-draft'
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          const expected = ['Mice', 'Rats'];
+          assert.deepEqual(project.species, expected);
+        });
+    });
+
+    it('sets the species to the project for legacy licence', () => {
+      const version = {
+        projectId: legacyProject,
+        data: {
+          protocols: [
+            {
+              species: [
+                {
+                  speciesId: '20'
+                },
+                {
+                  speciesId: '25'
+                }
+              ]
+            }
+          ]
+        }
+      };
+      const opts = {
+        id: legacyProject,
+        action: 'submit-draft'
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(legacyProject))
+        .then(project => {
+          const expected = ['Mice', 'Rats'];
+          assert.deepEqual(project.species, expected);
+        });
+    });
+
+    it('does not update the species for active projects', () => {
+      const version = {
+        projectId: projectId2,
+        data: {
+          species: [
+            'mice',
+            'rats'
+          ]
+        }
+      };
+      const opts = {
+        id: projectId2,
+        action: 'submit-draft'
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId2))
+        .then(project => {
+          assert.deepEqual(project.species, null);
+        });
+    });
+  });
+
   describe('grant', () => {
     beforeEach(() => {
       return Promise.resolve()
