@@ -351,6 +351,39 @@ describe('Project resolver', () => {
         });
     });
 
+    it('ignores falsy values', () => {
+      const version = {
+        projectId: legacyProject,
+        data: {
+          protocols: [
+            {
+              species: [
+                {
+                  foo: 'bar'
+                },
+                {
+                  speciesId: '25'
+                }
+              ]
+            }
+          ]
+        }
+      };
+      const opts = {
+        id: legacyProject,
+        action: 'submit-draft'
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(legacyProject))
+        .then(project => {
+          const expected = ['Rats'];
+          assert.deepEqual(project.species, expected);
+        });
+    });
+
     it('does not update the species for active projects', () => {
       const version = {
         projectId: projectId2,
