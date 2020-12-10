@@ -1,3 +1,4 @@
+const moment = require('moment');
 const assert = require('assert');
 const { profile } = require('../../lib/resolvers');
 const db = require('../helpers/db');
@@ -9,6 +10,10 @@ const ID_1 = 'e0b49357-237c-4042-b430-a57fc8e1be5f';
 const ID_2 = '8e1ac9a5-31ef-4907-8ad3-5252ccc6eb8b';
 const EST_1 = 8201;
 const EST_2 = 8202;
+
+const isNowish = (date) => {
+  return moment(date).isBetween(moment().subtract(5, 'seconds'), moment().add(5, 'seconds'));
+};
 
 describe('Profile resolver', () => {
   before(() => {
@@ -150,6 +155,21 @@ describe('Profile resolver', () => {
         .then(() => this.profile(params))
         .then(() => {
           assert.ok(!emailer.sendEmail.called);
+        });
+    });
+  });
+
+  describe('updateLastLogin', () => {
+    it('sets the login datetime to current datetime', () => {
+      const params = {
+        action: 'updateLastLogin',
+        id: ID_1
+      };
+      return Promise.resolve()
+        .then(() => this.profile(params))
+        .then(() => this.models.Profile.query().findById(ID_1))
+        .then(profile => {
+          assert.ok(isNowish(profile.lastLogin));
         });
     });
   });
