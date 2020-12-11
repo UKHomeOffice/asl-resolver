@@ -117,6 +117,42 @@ describe('ProjectVersion resolver', () => {
         });
     });
 
+    describe('retrospective assessment', () => {
+
+      it('flags raCompulsory if severe protocol is added', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { protocols: [{ severity: 'mild' }, { severity: 'severe' }] })
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectVersion.query().findById(versionId))
+          .then(version => {
+            assert.equal(version.raCompulsory, true);
+          });
+      });
+
+      it('does not flag raCompulsory if severe protocol is deleted', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { protocols: [{ severity: 'mild' }, { severity: 'severe', deleted: true }] })
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectVersion.query().findById(versionId))
+          .then(version => {
+            assert.equal(version.raCompulsory, false);
+          });
+      });
+
+    });
+
     describe('Additional availability', () => {
       it('creates new ProjectEstablishment models for additional establishments', () => {
         const establishments = [
