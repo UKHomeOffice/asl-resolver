@@ -450,6 +450,179 @@ describe('Project resolver', () => {
         ]));
     });
 
+    describe('RA', () => {
+      describe('fork-ra', () => {
+        it('creates a new draft RA model if nothing to fork', () => {
+          const opts = {
+            action: 'fork-ra',
+            id: projectId
+          };
+
+          return Promise.resolve()
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId }).first())
+            .then(ra => {
+              assert.ok(ra);
+              assert.deepEqual(ra.data, null);
+              assert.deepEqual(ra.status, 'draft');
+            });
+        });
+
+        it('forks the latest granted ra version', () => {
+          const opts = {
+            action: 'fork-ra',
+            id: projectId
+          };
+
+          const ra = {
+            projectId,
+            data: {
+              foo: 'bar'
+            },
+            status: 'granted'
+          };
+
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(ra))
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId }).orderBy('createdAt', 'desc'))
+            .then(ras => {
+              assert.equal(ras.length, 2);
+              assert.equal(ras[0].status, 'draft');
+              assert.deepEqual(ras[0].data, ra.data);
+            });
+        });
+
+        it('forks the latest submitted ra version', () => {
+          const opts = {
+            action: 'fork-ra',
+            id: projectId
+          };
+
+          const raVersion = {
+            projectId,
+            data: {
+              foo: 'bar'
+            },
+            status: 'submitted'
+          };
+
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersion))
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId }).orderBy('createdAt', 'desc'))
+            .then(ras => {
+              assert.equal(ras.length, 2);
+              assert.equal(ras[0].status, 'draft');
+              assert.deepEqual(ras[0].data, raVersion.data);
+            });
+        });
+      });
+
+      describe('submit-ra', () => {
+        it('submits a draft ra', () => {
+          const opts = {
+            action: 'submit-ra',
+            id: projectId
+          };
+
+          const raVersion = {
+            projectId,
+            data: {
+              foo: 'bar'
+            },
+            status: 'draft'
+          };
+
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersion))
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId }).first())
+            .then(ra => {
+              assert.ok(ra);
+              assert.deepEqual(ra.data, raVersion.data);
+              assert.equal(ra.status, 'submitted');
+            });
+        });
+
+        it('submits latest draft ra', () => {
+          const opts = {
+            action: 'submit-ra',
+            id: projectId
+          };
+
+          const raVersions = [
+            {
+              projectId,
+              data: {
+                foo: 'bar'
+              },
+              status: 'draft',
+              createdAt: moment().subtract(1, 'day').toISOString()
+            },
+            {
+              projectId,
+              data: {
+                foo: 'baz'
+              },
+              status: 'draft',
+              createdAt: moment().toISOString()
+            }
+          ];
+
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersions))
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId, status: 'submitted' }).first())
+            .then(ra => {
+              assert.ok(ra);
+              assert.equal(ra.data.foo, 'baz');
+            });
+        });
+      });
+
+      describe('grant-ra', () => {
+        it('grants the latest submitted ra version', () => {
+          const opts = {
+            action: 'grant-ra',
+            id: projectId
+          };
+
+          const raVersions = [
+            {
+              projectId,
+              data: {
+                foo: 'bar'
+              },
+              status: 'submitted',
+              createdAt: moment().subtract(1, 'day').toISOString()
+            },
+            {
+              projectId,
+              data: {
+                foo: 'baz'
+              },
+              status: 'submitted',
+              createdAt: moment().toISOString()
+            }
+          ];
+
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersions))
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId, status: 'granted' }).first())
+            .then(ra => {
+              assert.ok(ra);
+              assert.equal(ra.data.foo, 'baz');
+            })
+            .then(() => this.models.Project.query().findById(projectId))
+            .then(project => {
+              assert.ok(isNowish(project.raGrantedDate));
+            });
+        });
+      });
+    });
+
     describe('species', () => {
       it('sets the species from the project version', () => {
         const opts = {
