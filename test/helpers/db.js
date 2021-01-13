@@ -7,6 +7,7 @@ const tables = [
   'TrainingCourse',
   'ProjectEstablishment',
   'ProjectProfile',
+  'RetrospectiveAssessment',
   'ProjectVersion',
   'Project',
   'Invitation',
