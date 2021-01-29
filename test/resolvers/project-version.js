@@ -170,7 +170,7 @@ describe('ProjectVersion resolver', () => {
           });
       });
 
-      it('does not update raCompulsory if project is not a draft', () => {
+      it('does not remove raCompulsory flag if project is not a draft', () => {
         const opts = {
           action: 'patch',
           id: versionId,
@@ -183,6 +183,29 @@ describe('ProjectVersion resolver', () => {
             protocols: [{ severity: 'mild' }, { severity: 'severe' }]
           },
           raCompulsory: true
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().patchAndFetchById(versionId, patch))
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectVersion.query().findById(versionId))
+          .then(version => {
+            assert.equal(version.raCompulsory, true);
+          });
+      });
+
+      it('adds raCompulsory flag if project is not a draft', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { protocols: [{ severity: 'mild' }, { severity: 'severe' }] })
+          }
+        };
+        const patch = {
+          data: {
+            protocols: [{ severity: 'mild' }]
+          },
+          raCompulsory: false
         };
         return Promise.resolve()
           .then(() => this.models.ProjectVersion.query().patchAndFetchById(versionId, patch))
