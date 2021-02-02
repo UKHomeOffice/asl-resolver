@@ -166,7 +166,8 @@ describe('Project resolver', () => {
           status: 'granted',
           data: {
             title: 'Granted project'
-          }
+          },
+          raCompulsory: true
         }))
         .then(() => this.models.Profile.query().insert([
           {
@@ -249,6 +250,19 @@ describe('Project resolver', () => {
         .then(versions => versions[0])
         .then(version => {
           assert.equal(version.asruVersion, false);
+        });
+    });
+
+    it('preserves the RA compulsory flag', () => {
+      const opts = {
+        action: 'fork',
+        id: projectToForkId
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().where({ projectId: projectToForkId }).orderBy('createdAt', 'desc').first())
+        .then(version => {
+          assert.equal(version.raCompulsory, true);
         });
     });
   });
