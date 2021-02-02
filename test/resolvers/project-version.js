@@ -7,7 +7,9 @@ const db = require('../helpers/db');
 
 const profileId = uuid();
 const projectId = uuid();
+const draftProjectId = uuid();
 const versionId = uuid();
+const draftVersionId = uuid();
 
 describe('ProjectVersion resolver', () => {
 
@@ -49,22 +51,39 @@ describe('ProjectVersion resolver', () => {
 
     beforeEach(() => {
       return Promise.resolve()
-        .then(() => this.models.Project.query().insert({
-          id: projectId,
-          status: 'active',
-          title: 'Hypoxy and angiogenesis in cancer therapy',
-          issueDate: new Date('2019-07-11').toISOString(),
-          expiryDate: new Date('2022-07-11').toISOString(),
-          licenceNumber: 'PP-627808',
-          establishmentId: 8201,
-          licenceHolderId: profileId
-        }))
-        .then(() => this.models.ProjectVersion.query().insert({
-          id: versionId,
-          projectId,
-          data: {},
-          status: 'draft'
-        }));
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Hypoxy and angiogenesis in cancer therapy',
+            issueDate: new Date('2019-07-11').toISOString(),
+            expiryDate: new Date('2022-07-11').toISOString(),
+            licenceNumber: 'PP-627808',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          },
+          {
+            id: draftProjectId,
+            status: 'inactive',
+            title: 'Inactive project',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            id: versionId,
+            projectId,
+            data: {},
+            status: 'draft'
+          },
+          {
+            id: draftVersionId,
+            projectId: draftProjectId,
+            data: {},
+            status: 'draft'
+          }
+        ]));
     });
 
     it('can add a protocol to an empty project version', () => {
@@ -101,35 +120,35 @@ describe('ProjectVersion resolver', () => {
         });
     });
 
-    it('sets ra flag to true if training licence', () => {
-      const opts = {
-        action: 'patch',
-        id: versionId,
-        data: {
-          patch: jsondiff.diff({}, { 'training-licence': true })
-        }
-      };
-      return Promise.resolve()
-        .then(() => this.projectVersion(opts))
-        .then(() => this.models.ProjectVersion.query().findById(versionId))
-        .then(version => {
-          assert.equal(version.raCompulsory, true);
-        });
-    });
-
     describe('retrospective assessment', () => {
+
+      it('sets ra flag to true if training licence', () => {
+        const opts = {
+          action: 'patch',
+          id: draftVersionId,
+          data: {
+            patch: jsondiff.diff({}, { 'training-licence': true })
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectVersion.query().findById(draftVersionId))
+          .then(version => {
+            assert.equal(version.raCompulsory, true);
+          });
+      });
 
       it('flags raCompulsory if severe protocol is added', () => {
         const opts = {
           action: 'patch',
-          id: versionId,
+          id: draftVersionId,
           data: {
             patch: jsondiff.diff({}, { protocols: [{ severity: 'mild' }, { severity: 'severe' }] })
           }
         };
         return Promise.resolve()
           .then(() => this.projectVersion(opts))
-          .then(() => this.models.ProjectVersion.query().findById(versionId))
+          .then(() => this.models.ProjectVersion.query().findById(draftVersionId))
           .then(version => {
             assert.equal(version.raCompulsory, true);
           });
@@ -138,16 +157,62 @@ describe('ProjectVersion resolver', () => {
       it('does not flag raCompulsory if severe protocol is deleted', () => {
         const opts = {
           action: 'patch',
-          id: versionId,
+          id: draftVersionId,
           data: {
             patch: jsondiff.diff({}, { protocols: [{ severity: 'mild' }, { severity: 'severe', deleted: true }] })
           }
         };
         return Promise.resolve()
           .then(() => this.projectVersion(opts))
-          .then(() => this.models.ProjectVersion.query().findById(versionId))
+          .then(() => this.models.ProjectVersion.query().findById(draftVersionId))
           .then(version => {
             assert.equal(version.raCompulsory, false);
+          });
+      });
+
+      it('does not remove raCompulsory flag if project is not a draft', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { protocols: [{ severity: 'mild' }, { severity: 'severe', deleted: true }] })
+          }
+        };
+        const patch = {
+          data: {
+            protocols: [{ severity: 'mild' }, { severity: 'severe' }]
+          },
+          raCompulsory: true
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().patchAndFetchById(versionId, patch))
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectVersion.query().findById(versionId))
+          .then(version => {
+            assert.equal(version.raCompulsory, true);
+          });
+      });
+
+      it('adds raCompulsory flag if project is not a draft', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { protocols: [{ severity: 'mild' }, { severity: 'severe' }] })
+          }
+        };
+        const patch = {
+          data: {
+            protocols: [{ severity: 'mild' }]
+          },
+          raCompulsory: false
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().patchAndFetchById(versionId, patch))
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectVersion.query().findById(versionId))
+          .then(version => {
+            assert.equal(version.raCompulsory, true);
           });
       });
 
