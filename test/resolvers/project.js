@@ -634,6 +634,44 @@ describe('Project resolver', () => {
               assert.ok(isNowish(project.raGrantedDate));
             });
         });
+
+        it('returns returns project if latest version is granted (regression)', () => {
+          const opts = {
+            action: 'grant-ra',
+            id: projectId
+          };
+
+          const raVersions = [
+            {
+              projectId,
+              data: {
+                foo: 'bar'
+              },
+              status: 'submitted',
+              createdAt: moment().subtract(1, 'day').toISOString()
+            },
+            {
+              projectId,
+              data: {
+                foo: 'baz'
+              },
+              status: 'granted',
+              createdAt: moment().toISOString()
+            }
+          ];
+
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersions))
+            .then(() => this.project(opts))
+            .then(project => {
+              assert.equal(project.id, projectId);
+            })
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId, status: 'granted' }).first())
+            .then(ra => {
+              assert.ok(ra);
+              assert.equal(ra.data.foo, 'baz');
+            });
+        });
       });
     });
 
