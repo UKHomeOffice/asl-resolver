@@ -40,17 +40,33 @@ describe('Project resolver', () => {
           name: 'Marvell Pharmaceutical'
         }
       ]))
-      .then(() => this.models.Profile.query().insert({
-        id: profileId,
-        userId: 'abc123',
-        title: 'Dr',
-        firstName: 'Linford',
-        lastName: 'Christie',
-        address: '1 Some Road',
-        postcode: 'A1 1AA',
-        email: 'test1@example.com',
-        telephone: '01234567890'
-      }));
+      .then(() => this.models.Profile.query().insert([
+        {
+          id: profileId,
+          userId: 'abc123',
+          title: 'Dr',
+          firstName: 'Linford',
+          lastName: 'Christie',
+          address: '1 Some Road',
+          postcode: 'A1 1AA',
+          email: 'test1@example.com',
+          telephone: '01234567890'
+        },
+        {
+          id: licensingId,
+          firstName: 'Sterling',
+          lastName: 'Archer',
+          email: 'sterling@archer.com',
+          asruUser: true,
+          asruLicensing: true
+        },
+        {
+          id: holcId,
+          firstName: 'Holc',
+          lastName: 'Hogan',
+          email: 'holc@hogan.com'
+        }
+      ]));
   });
 
   afterEach(() => db.clean(this.models));
@@ -168,32 +184,14 @@ describe('Project resolver', () => {
             title: 'Granted project'
           },
           raCompulsory: true
-        }))
-        .then(() => this.models.Profile.query().insert([
-          {
-            id: licensingId,
-            firstName: 'Sterling',
-            lastName: 'Archer',
-            email: 'sterling@archer.com',
-            asruUser: true,
-            asruLicensing: true
-          },
-          {
-            id: holcId,
-            firstName: 'Holc',
-            lastName: 'Hogan',
-            email: 'holc@hogan.com'
-          }
-        ]));
+        }));
     });
 
     it('sets the asruVersion flag to true if submitted by asru user', () => {
       const opts = {
         action: 'fork',
         id: projectToForkId,
-        meta: {
-          changedBy: licensingId
-        }
+        changedBy: licensingId
       };
       return Promise.resolve()
         .then(() => this.project(opts))
@@ -208,9 +206,7 @@ describe('Project resolver', () => {
       const opts = {
         action: 'fork',
         id: projectToForkId,
-        meta: {
-          changedBy: licensingId
-        }
+        changedBy: licensingId
       };
       return Promise.resolve()
         .then(() => this.models.ProjectVersion.query().where({ projectId: projectToForkId }).patch({ status: 'draft' }))
@@ -226,9 +222,7 @@ describe('Project resolver', () => {
       const opts = {
         action: 'fork',
         id: projectToForkId,
-        meta: {
-          changedBy: holcId
-        }
+        changedBy: holcId
       };
       return Promise.resolve()
         .then(() => this.project(opts))
@@ -596,6 +590,7 @@ describe('Project resolver', () => {
       });
 
       describe('grant-ra', () => {
+
         it('grants the latest submitted ra version', () => {
           const opts = {
             action: 'grant-ra',
@@ -670,6 +665,63 @@ describe('Project resolver', () => {
             .then(ra => {
               assert.ok(ra);
               assert.equal(ra.data.foo, 'baz');
+            });
+        });
+
+        it('does not allow granting of a non-submitted version', () => {
+          const opts = {
+            action: 'grant-ra',
+            id: projectId,
+            changedBy: holcId
+          };
+
+          const raVersions = [
+            {
+              projectId,
+              data: {
+                foo: 'bar'
+              },
+              status: 'submitted',
+              createdAt: moment().subtract(1, 'day').toISOString()
+            },
+            {
+              projectId,
+              data: {},
+              status: 'draft',
+              createdAt: moment().toISOString()
+            }
+          ];
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersions))
+            .then(() => {
+              return assert.rejects(() => this.project(opts));
+            });
+        });
+
+        it('allows granting of a non-submitted version if request made by ASRU user', () => {
+          const opts = {
+            action: 'grant-ra',
+            id: projectId,
+            changedBy: licensingId
+          };
+
+          const raVersions = [
+            {
+              projectId,
+              status: 'draft',
+              createdAt: moment().toISOString()
+            }
+          ];
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersions))
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.query().where({ projectId, status: 'granted' }).first())
+            .then(ra => {
+              assert.ok(ra);
+            })
+            .then(() => this.models.Project.query().findById(projectId))
+            .then(project => {
+              assert.ok(isNowish(project.raGrantedDate));
             });
         });
       });
