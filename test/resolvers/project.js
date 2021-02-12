@@ -2289,6 +2289,128 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('change ppl holder', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Licence to change',
+            licenceNumber: 'ABC-123',
+            issueDate: new Date('2020-01-17').toISOString(),
+            expiryDate: new Date('2025-01-17').toISOString(),
+            amendedDate: new Date('2021-01-17').toISOString(),
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          },
+          {
+            id: projectId2,
+            status: 'inactive',
+            title: 'draft',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            id: '574266e5-ef34-4e34-bf75-7b6201357e75',
+            projectId: projectId,
+            data: {
+              experience: 'Previous applicant experience'
+            },
+            status: 'granted',
+            createdAt: new Date('2020-01-17').toISOString()
+          },
+          {
+            id: '574266e5-ef34-4e34-bf75-7b6201357e76',
+            projectId: projectId2,
+            data: {
+              experience: 'Previous applicant experience'
+            },
+            status: 'draft',
+            createdAt: new Date('2020-01-17').toISOString()
+          }
+        ]));
+    });
+
+    it('creates a new granted version for granted PPLs', () => {
+      const opts = {
+        action: 'update',
+        id: projectId,
+        data: {
+          licenceHolderId: holcId
+        },
+        meta: {
+          experience: 'Some new experience content'
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().eager('version').findById(projectId))
+        .then(project => {
+          assert.equal(project.version.length, 2);
+          assert.ok(project.version.every(version => version.status === 'granted'));
+          assert.equal(project.version[0].data.experience, 'Previous applicant experience');
+          assert.equal(project.version[1].data.experience, 'Some new experience content');
+        });
+    });
+
+    it('updates the amended date on a granted project', () => {
+      const opts = {
+        action: 'update',
+        id: projectId,
+        data: {
+          licenceHolderId: holcId
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          assert.ok(isNowish(project.amendedDate));
+        });
+    });
+
+    it('updates the current draft version for draft PPLs', () => {
+      const opts = {
+        action: 'update',
+        id: projectId2,
+        data: {
+          licenceHolderId: holcId
+        },
+        meta: {
+          experience: 'Some new experience content'
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().eager('version').findById(projectId2))
+        .then(project => {
+          assert.equal(project.version.length, 1);
+          assert.equal(project.version[0].status, 'draft');
+          assert.equal(project.version[0].data.experience, 'Some new experience content');
+        });
+    });
+
+    it('does not update the amended date on a draft project', () => {
+      const opts = {
+        action: 'update',
+        id: projectId2,
+        data: {
+          licenceHolderId: holcId
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId2))
+        .then(project => {
+          assert.equal(project.amendedDate, null);
+        });
+    });
+
+  });
+
   describe('Conversion of legacy project licences', () => {
 
     it('can create a project stub for a legacy licence', () => {
