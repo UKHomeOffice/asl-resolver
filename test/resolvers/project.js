@@ -1878,11 +1878,64 @@ describe('Project resolver', () => {
         });
 
         await this.project(this.input);
-        const newProject = await this.models.Project.query().withGraphFetched('additionalEstablishments').findOne({ establishmentId: 8203 });
+        const newProject = await this.models.Project.query()
+          .withGraphFetched('additionalEstablishments')
+          .findOne({ establishmentId: 8203 });
 
         assert.equal(newProject.additionalEstablishments.length, 2);
         assert.ok(newProject.additionalEstablishments.find(e => e.id === 8201 && e.status === 'active'), 'an active association with establishment id 8201 should have been created');
         assert.ok(newProject.additionalEstablishments.find(e => e.id === 8202 && e.status === 'active'), 'an active association with establishment id 8202 should have been created');
+      });
+
+      it('removes any draft AA records created during transfer process', async () => {
+        await this.models.ProjectVersion.query().findOne({ projectId }).patch({
+          data: {
+            transferToEstablishment: 8203,
+            'other-establishments': true,
+            establishments: [
+              { 'establishment-id': 8201 },
+              { 'establishment-id': 8202 }
+            ]
+          }
+        });
+        await this.models.ProjectEstablishment.query().insert([
+          { projectId, establishmentId: 8201, status: 'draft' },
+          { projectId, establishmentId: 8202, status: 'draft' }
+        ]);
+
+        await this.project(this.input);
+
+        const oldProject = await this.models.Project.query()
+          .withGraphFetched('additionalEstablishments')
+          .findById(projectId);
+
+        assert.deepEqual(oldProject.additionalEstablishments, []);
+      });
+
+      it('leaves pre-existing AA records created prior to transfer process', async () => {
+        await this.models.ProjectVersion.query().findOne({ projectId }).patch({
+          data: {
+            transferToEstablishment: 8203,
+            'other-establishments': true,
+            establishments: [
+              { 'establishment-id': 8201 },
+              { 'establishment-id': 8202 }
+            ]
+          }
+        });
+        await this.models.ProjectEstablishment.query().insert([
+          { projectId, establishmentId: 8201, status: 'draft' },
+          { projectId, establishmentId: 8202, status: 'active' }
+        ]);
+
+        await this.project(this.input);
+
+        const oldProject = await this.models.Project.query()
+          .withGraphFetched('additionalEstablishments')
+          .findById(projectId);
+
+        assert.equal(oldProject.additionalEstablishments.length, 1);
+        assert.equal(oldProject.additionalEstablishments[0].id, 8202);
       });
     });
   });
