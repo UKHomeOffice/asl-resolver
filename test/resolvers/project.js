@@ -1813,7 +1813,7 @@ describe('Project resolver', () => {
 
     describe('successful transfer', () => {
       beforeEach(() => {
-        const opts = {
+        this.input = {
           action: 'transfer',
           id: projectId,
           data: {
@@ -1828,11 +1828,11 @@ describe('Project resolver', () => {
               foo: 'bar',
               transferToEstablishment: 8203
             }
-          }))
-          .then(() => this.project(opts));
+          }));
       });
 
       it('clones the project into the new establishment updating transferredInDate and pointers to old est and proj', async () => {
+        await this.project(this.input);
         const newProject = await this.models.Project.query().findOne({ establishmentId: 8203 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
@@ -1843,18 +1843,19 @@ describe('Project resolver', () => {
         assert.equal(newProject.previousProjectId, oldProject.id);
       });
 
-      it('creates a clone of the version under the new project, removing the transfer flag', () => {
-        return Promise.resolve()
-          .then(() => this.models.Project.query().findOne({ establishmentId: 8203 }))
-          .then(({ id }) => this.models.ProjectVersion.query().findOne({ projectId: id }))
-          .then(version => {
-            assert.equal(version.status, 'granted');
-            assert.equal(version.data.foo, 'bar');
-            assert.equal(version.data.transferToEstablishment, undefined);
-          });
+      it('creates a clone of the version under the new project, removing the transfer flag', async () => {
+        await this.project(this.input);
+
+        const { id } = await this.models.Project.query().findOne({ establishmentId: 8203 });
+        const version = await this.models.ProjectVersion.query().findOne({ projectId: id });
+        assert.equal(version.status, 'granted');
+        assert.equal(version.data.foo, 'bar');
+        assert.equal(version.data.transferToEstablishment, undefined);
       });
 
       it('updates the status of the old project to transferred, updates transferredOutDate and new proj/est pointers', async () => {
+        await this.project(this.input);
+
         const newProject = await this.models.Project.query().findOne({ establishmentId: 8203 });
         const oldProject = await this.models.Project.query().findById(projectId);
 
@@ -1862,6 +1863,79 @@ describe('Project resolver', () => {
         assert(isNowish(oldProject.transferredOutDate));
         assert.equal(oldProject.transferEstablishmentId, 8203);
         assert.equal(oldProject.transferProjectId, newProject.id);
+      });
+
+      it('creates additional availability relations from the new project', async () => {
+        await this.models.ProjectVersion.query().findOne({ projectId }).patch({
+          data: {
+            transferToEstablishment: 8203,
+            'other-establishments': true,
+            establishments: [
+              { 'establishment-id': 8201 },
+              { 'establishment-id': 8202 }
+            ]
+          }
+        });
+
+        await this.project(this.input);
+        const newProject = await this.models.Project.query()
+          .withGraphFetched('additionalEstablishments')
+          .findOne({ establishmentId: 8203 });
+
+        assert.equal(newProject.additionalEstablishments.length, 2);
+        assert.ok(newProject.additionalEstablishments.find(e => e.id === 8201 && e.status === 'active'), 'an active association with establishment id 8201 should have been created');
+        assert.ok(newProject.additionalEstablishments.find(e => e.id === 8202 && e.status === 'active'), 'an active association with establishment id 8202 should have been created');
+      });
+
+      it('removes any draft AA records created during transfer process', async () => {
+        await this.models.ProjectVersion.query().findOne({ projectId }).patch({
+          data: {
+            transferToEstablishment: 8203,
+            'other-establishments': true,
+            establishments: [
+              { 'establishment-id': 8201 },
+              { 'establishment-id': 8202 }
+            ]
+          }
+        });
+        await this.models.ProjectEstablishment.query().insert([
+          { projectId, establishmentId: 8201, status: 'draft' },
+          { projectId, establishmentId: 8202, status: 'draft' }
+        ]);
+
+        await this.project(this.input);
+
+        const oldProject = await this.models.Project.query()
+          .withGraphFetched('additionalEstablishments')
+          .findById(projectId);
+
+        assert.deepEqual(oldProject.additionalEstablishments, []);
+      });
+
+      it('leaves pre-existing AA records created prior to transfer process', async () => {
+        await this.models.ProjectVersion.query().findOne({ projectId }).patch({
+          data: {
+            transferToEstablishment: 8203,
+            'other-establishments': true,
+            establishments: [
+              { 'establishment-id': 8201 },
+              { 'establishment-id': 8202 }
+            ]
+          }
+        });
+        await this.models.ProjectEstablishment.query().insert([
+          { projectId, establishmentId: 8201, status: 'draft' },
+          { projectId, establishmentId: 8202, status: 'active' }
+        ]);
+
+        await this.project(this.input);
+
+        const oldProject = await this.models.Project.query()
+          .withGraphFetched('additionalEstablishments')
+          .findById(projectId);
+
+        assert.equal(oldProject.additionalEstablishments.length, 1);
+        assert.equal(oldProject.additionalEstablishments[0].id, 8202);
       });
     });
   });
