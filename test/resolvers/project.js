@@ -1653,6 +1653,34 @@ describe('Project resolver', () => {
         });
     });
 
+    it('adds the licence holder to both the project and the version', () => {
+      const opts = {
+        action: 'create',
+        data: {
+          title: 'Testing licence holder',
+          establishmentId: 8201,
+          licenceHolderId: profileId,
+          version: {
+            data: {
+              title: 'Testing licence holder'
+            }
+          }
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => {
+          return this.models.Project.query()
+            .findOne({ title: opts.data.title })
+            .withGraphFetched('version');
+        })
+        .then(project => {
+          assert.deepStrictEqual(project.licenceHolderId, profileId);
+          assert.deepStrictEqual(project.version[0].licenceHolderId, profileId);
+        });
+    });
+
     it('removes establishments and transfer to est from version', () => {
       const data = {
         establishments: [
