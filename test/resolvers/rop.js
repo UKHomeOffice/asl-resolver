@@ -46,7 +46,8 @@ describe('ROP resolver', () => {
       const opts = {
         action: 'create',
         data: {
-          projectId
+          projectId,
+          year: 2021
         }
       };
       return Promise.resolve()
