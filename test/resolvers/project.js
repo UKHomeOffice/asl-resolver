@@ -2621,6 +2621,7 @@ describe('Project resolver', () => {
 
       const conversionTitle = 'Digitised Paper Licence';
       const expectedExpiryDate = new Date('2023-02-15 12:00:00').toISOString();
+      const expectedRaDate = moment(expectedExpiryDate).add(6, 'months').toISOString();
 
       return Promise.resolve()
         .then(() => this.models.Project.query().insert([
@@ -2647,7 +2648,8 @@ describe('Project resolver', () => {
                 years: 5,
                 months: 0
               },
-              isLegacyStub: true
+              isLegacyStub: true,
+              retrospectiveAssessment: true
             },
             status: 'granted',
             asruVersion: true,
@@ -2662,7 +2664,8 @@ describe('Project resolver', () => {
                 years: 4,
                 months: 6
               },
-              isLegacyStub: true
+              isLegacyStub: true,
+              retrospectiveAssessment: true
             },
             status: 'draft',
             asruVersion: true,
@@ -2688,6 +2691,7 @@ describe('Project resolver', () => {
               assert.equal(project.status, 'active', 'the project should still be active');
               assert.equal(project.title, conversionTitle, 'the project title should reflect the converted version');
               assert.equal(project.expiryDate, expectedExpiryDate, 'the expiry date should reflect the converted version duration');
+              assert.equal(project.raDate, expectedRaDate, 'the retrospective assessment date should be set and 6 months from expiry');
               assert.equal(project.isLegacyStub, false, 'the project should not be a legacy stub');
               assert.equal(project.version.length, 2, 'there should be exactly 2 versions');
 
@@ -2700,7 +2704,7 @@ describe('Project resolver', () => {
         });
     });
 
-    it('can convert a project stub into a standard legacy licence', () => {
+    it('can delete a project stub', () => {
       const title = 'Digitised Paper Licence Stub';
       const issueDate = new Date('2018-08-15 12:00:00').toISOString();
       const expiryDate = new Date('2023-08-15 12:00:00').toISOString();
