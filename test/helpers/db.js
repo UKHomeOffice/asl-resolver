@@ -9,6 +9,8 @@ const tables = [
   'ProjectEstablishment',
   'ProjectProfile',
   'RetrospectiveAssessment',
+  'Procedure',
+  'Rop',
   'ProjectVersion',
   'Project',
   'Invitation',
