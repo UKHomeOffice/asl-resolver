@@ -4,6 +4,7 @@ const settings = require('@asl/schema/knexfile').test;
 const tables = [
   'Changelog',
   'EmailPreferences',
+  'Export',
   'TrainingPil',
   'TrainingCourse',
   'ProjectEstablishment',
