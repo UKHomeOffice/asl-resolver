@@ -725,6 +725,39 @@ describe('Project resolver', () => {
             });
         });
       });
+
+      describe('delete-ra', () => {
+        const raVersionId = generateUuid();
+
+        it('deletes the specified RA', () => {
+          const opts = {
+            action: 'delete-ra',
+            id: projectId,
+            data: {
+              raVersion: raVersionId
+            }
+          };
+
+          const raVersions = [
+            {
+              id: raVersionId,
+              projectId,
+              data: {
+                foo: 'bar'
+              },
+              status: 'submitted'
+            }
+          ];
+
+          return Promise.resolve()
+            .then(() => this.models.RetrospectiveAssessment.query().insert(raVersions))
+            .then(() => this.project(opts))
+            .then(() => this.models.RetrospectiveAssessment.queryWithDeleted().findById(raVersionId))
+            .then(ra => {
+              assert.ok(ra.deleted && moment(ra.deleted).isValid(), 'ra should have a valid deleted date');
+            });
+        });
+      });
     });
 
     describe('species', () => {
