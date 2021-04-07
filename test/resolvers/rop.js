@@ -1,4 +1,5 @@
 const assert = require('assert');
+const moment = require('moment');
 const { rop } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 const uuid = require('uuid/v4');
@@ -56,7 +57,33 @@ describe('ROP resolver', () => {
         .then(rops => rops[0])
         .then(rop => {
           assert.ok(rop);
-          assert.deepEqual(rop.year, 2021);
+          assert.deepStrictEqual(rop.year, 2021);
+        });
+    });
+
+    it('can submit a rop', () => {
+      const now = moment();
+      const ropId = uuid();
+
+      const opts = {
+        action: 'submit',
+        id: ropId
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.Rop.query().insert({
+          id: ropId,
+          projectId,
+          year: 2021,
+          status: 'draft'
+        }))
+        .then(() => this.rop(opts))
+        .then(() => this.models.Rop.query().findById(ropId))
+        .then(rop => {
+          assert.ok(rop);
+          assert.deepStrictEqual(rop.status, 'submitted', 'status should be updated to submitted');
+          assert.ok(rop.submittedDate, 'submitted date should be set');
+          assert.ok(moment(rop.submittedDate).isSameOrAfter(now), 'submitted date should be now or thereabouts');
         });
     });
 
