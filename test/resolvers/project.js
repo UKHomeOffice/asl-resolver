@@ -7,6 +7,7 @@ const generateUuid = require('uuid/v4');
 const profileId = generateUuid();
 const projectId = generateUuid();
 const projectId2 = generateUuid();
+const expiredProjectId = generateUuid();
 const legacyProject = generateUuid();
 const projectToForkId = generateUuid();
 
@@ -2190,20 +2191,38 @@ describe('Project resolver', () => {
   describe('revoke', () => {
     beforeEach(() => {
       return Promise.resolve()
-        .then(() => this.models.Project.query().insert({
-          id: projectId,
-          status: 'active',
-          title: 'Active project to be revoked',
-          issueDate: new Date().toISOString(),
-          expiryDate: moment(new Date()).add(5, 'years').toISOString(),
-          establishmentId: 8201,
-          licenceHolderId: profileId
-        }))
-        .then(() => this.models.ProjectVersion.query().insert({
-          projectId,
-          status: 'granted',
-          data: {}
-        }));
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Active project to be revoked',
+            issueDate: moment().toISOString(),
+            expiryDate: moment().add(5, 'years').toISOString(),
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          },
+          {
+            id: expiredProjectId,
+            status: 'expired',
+            title: 'Expired project',
+            issueDate: moment('2015-07-01').toISOString(),
+            expiryDate: moment('2020-07-01').toISOString(),
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            projectId,
+            status: 'granted',
+            data: {}
+          },
+          {
+            projectId: expiredProjectId,
+            status: 'granted',
+            data: {}
+          }
+        ]));
     });
 
     it('can revoke an active project', () => {
@@ -2220,8 +2239,27 @@ describe('Project resolver', () => {
         .then(() => this.project(opts))
         .then(() => this.models.Project.query().findById(projectId))
         .then(project => {
-          assert.equal(project.status, 'revoked', 'project status was not set to revoked');
-          assert.ok(project.revocationDate && moment(project.revocationDate).isValid(), 'revocation date was not set');
+          assert.equal(project.status, 'revoked');
+          assert.ok(project.revocationDate && moment(project.revocationDate).isValid(), 'revocation date should be set');
+        });
+    });
+
+    it('cannot revoke an expired project', () => {
+      const opts = {
+        action: 'revoke',
+        id: expiredProjectId,
+        data: {
+          establishmentId,
+          licenceHolderId: profileId
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => assert.rejects(() => this.project(opts)))
+        .then(() => this.models.Project.query().findById(expiredProjectId))
+        .then(project => {
+          assert.equal(project.status, 'expired');
+          assert.equal(project.revocationDate, null);
         });
     });
 
