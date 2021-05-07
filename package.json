@@ -30,7 +30,7 @@
     "hot-shots": "^6.8.2",
     "jsondiffpatch": "^0.4.1",
     "jsonwebtoken": "^8.3.0",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "minimist": "^1.2.5",
     "moment": "^2.24.0",
     "r2": "^2.0.1",
