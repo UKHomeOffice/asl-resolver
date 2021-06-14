@@ -267,6 +267,32 @@ describe('Place resolver', () => {
             nowish(establishment.updatedAt, new Date().toISOString());
           });
       });
+
+      it('removes any roles that are missing from the establishment', () => {
+        const opts = {
+          action: 'update',
+          id: PLACE_ID1,
+          data: {
+            name: 'A room',
+            site: 'A site',
+            suitability: ['SA'],
+            holding: ['NOH'],
+            roles: [
+              NACWO_ROLE_ID_1,
+              NACWO_ROLE_ID_2
+            ]
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.models.Role.query().findById(NACWO_ROLE_ID_1).delete())
+          .then(() => this.place(opts))
+          .then(() => this.models.Place.query().findById(PLACE_ID1).withGraphFetched('roles'))
+          .then(place => {
+            assert.ok(place);
+            assert.equal(place.roles.length, 1);
+            assert.equal(place.roles[0].id, NACWO_ROLE_ID_2);
+          });
+      });
     });
 
     describe('Delete', () => {
