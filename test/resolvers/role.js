@@ -1,15 +1,22 @@
 const assert = require('assert');
 const moment = require('moment');
+const uuid = require('uuid').v4;
 const { role } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
-const PROFILE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08b';
-const PROFILE_ID_2 = '80aed65b-ff2b-409f-918b-0cdab4a6d082';
-const ROLE_ID = '80aed65b-ff2b-409f-918b-0cdab4a6d08c';
-const HOLC_ROLE_ID = '35a51aed-d489-4d73-a1fe-599947beb72e';
+const PROFILE_ID = uuid();
+const PROFILE_ID_2 = uuid();
+const PROFILE_ID_3 = uuid();
+const ROLE_ID = uuid();
+const HOLC_ROLE_ID = uuid();
 
-const NACWO_ROLE_ID = 'ea07f16a-f9f9-402a-b916-951830dfe730';
-const NACWO_ROLE_ID_2 = 'cbcaddc0-7e31-4eb0-bc93-10cd29ece6e9';
+const NACWO_ROLE_ID = uuid();
+const NACWO_ROLE_ID_2 = uuid();
+const NVS_ROLE_ID = uuid();
+const NVS_ROLE_ID_2 = uuid();
+
+const PLACE_ID_1 = uuid();
+const PLACE_ID_2 = uuid();
 
 const ESTABLISHMENT_ID = 8201;
 const ESTABLISHMENT_ID_2 = 8202;
@@ -51,6 +58,12 @@ describe('Role resolver', () => {
           firstName: 'James',
           lastName: 'Herriot',
           email: 'jh@example.com'
+        },
+        {
+          id: PROFILE_ID_3,
+          firstName: 'Yvette',
+          lastName: 'Fielding',
+          email: 'yf@example.com'
         }
       ]))
       .then(() => this.models.Role.query().insert([
@@ -77,26 +90,56 @@ describe('Role resolver', () => {
           establishmentId: ESTABLISHMENT_ID_2,
           profileId: PROFILE_ID,
           type: 'nacwo'
+        },
+        {
+          id: NVS_ROLE_ID,
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID_3,
+          type: 'nvs'
+        },
+        {
+          id: NVS_ROLE_ID_2,
+          establishmentId: ESTABLISHMENT_ID_2,
+          profileId: PROFILE_ID_3,
+          type: 'nvs'
         }
       ]))
       .then(() => this.models.Place.query().insert([
         {
+          id: PLACE_ID_1,
           site: 'Site 1',
           area: 'Area 1',
           name: 'Place at Establishment 1',
           suitability: ['DOG'],
           holding: ['LTH'],
-          establishmentId: ESTABLISHMENT_ID,
-          nacwoId: NACWO_ROLE_ID
+          establishmentId: ESTABLISHMENT_ID
         },
         {
+          id: PLACE_ID_2,
           site: 'Site 2',
           area: 'Area 2',
           name: 'Place at Establishment 2',
           suitability: ['CAT'],
           holding: ['STH'],
-          establishmentId: ESTABLISHMENT_ID_2,
-          nacwoId: NACWO_ROLE_ID_2
+          establishmentId: ESTABLISHMENT_ID_2
+        }
+      ]))
+      .then(() => this.models.PlaceRole.query().insert([
+        {
+          placeId: PLACE_ID_1,
+          roleId: NACWO_ROLE_ID
+        },
+        {
+          placeId: PLACE_ID_1,
+          roleId: NVS_ROLE_ID
+        },
+        {
+          placeId: PLACE_ID_2,
+          roleId: NACWO_ROLE_ID
+        },
+        {
+          placeId: PLACE_ID_2,
+          roleId: NVS_ROLE_ID
         }
       ]));
   });
@@ -247,9 +290,30 @@ describe('Role resolver', () => {
         };
         return Promise.resolve()
           .then(() => this.role(opts))
-          .then(() => this.models.Place.query().where({ nacwoId: NACWO_ROLE_ID }))
+          .then(() => this.models.Place.query().where({ establishmentId: ESTABLISHMENT_ID }).withGraphFetched('roles'))
           .then(places => {
-            assert.equal(places.length, 0, 'there should be no places with that nacwo role id');
+            places.forEach(place => {
+              assert.ok(place.roles.every(role => role.id !== NACWO_ROLE_ID));
+            });
+          });
+      });
+
+      it('removing an nvs also dissociates the user from any related places at that establishment', () => {
+        const opts = {
+          action: 'delete',
+          id: NVS_ROLE_ID,
+          data: {
+            establishmentId: ESTABLISHMENT_ID,
+            profileId: PROFILE_ID
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.role(opts))
+          .then(() => this.models.Place.query().where({ establishmentId: ESTABLISHMENT_ID }).withGraphFetched('roles'))
+          .then(places => {
+            places.forEach(place => {
+              assert.ok(place.roles.every(role => role.id !== NVS_ROLE_ID));
+            });
           });
       });
 
@@ -264,9 +328,9 @@ describe('Role resolver', () => {
         };
         return Promise.resolve()
           .then(() => this.role(opts))
-          .then(() => this.models.Place.query().where({ nacwoId: NACWO_ROLE_ID }))
-          .then(places => {
-            assert.equal(places.length, 1, 'the profile should still be nacwo for the place at establishment 1');
+          .then(() => this.models.Place.query().findById(PLACE_ID_1).withGraphFetched('roles'))
+          .then(place => {
+            assert.ok(place.roles.find(role => role.id === NACWO_ROLE_ID), 'NACWO role is still present on assigned place at establishment 1');
           });
       });
 
