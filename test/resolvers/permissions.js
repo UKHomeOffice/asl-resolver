@@ -4,6 +4,7 @@ const { permission } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
 const PROFILE = uuid();
+const PROFILE2 = uuid();
 
 describe('Permissions resolver', () => {
   before(() => {
@@ -18,10 +19,17 @@ describe('Permissions resolver', () => {
           id: PROFILE,
           firstName: 'Sterling',
           lastName: 'Archer',
-          email: 'sterling@archer.com',
+          email: 'sa@example.com',
           telephone: '01234567890',
-          dob: '1979-12-01',
-          asruUser: true
+          dob: '1979-12-01'
+        },
+        {
+          id: PROFILE2,
+          firstName: 'Other',
+          lastName: 'User',
+          email: 'ou@example.com',
+          telephone: '01234567890',
+          dob: '1979-12-01'
         }
       ]))
       .then(() => this.models.Establishment.query().insert([
@@ -45,7 +53,57 @@ describe('Permissions resolver', () => {
           profileId: PROFILE,
           role: 'basic'
         }
-      ]).returning('*'));
+      ]).returning('*'))
+      .then(() => this.models.Project.query().insert([
+        {
+          establishmentId: 100,
+          licenceHolderId: PROFILE,
+          status: 'inactive',
+          title: 'Draft',
+          version: [
+            {
+              status: 'draft',
+              data: {}
+            }
+          ]
+        },
+        {
+          establishmentId: 100,
+          licenceHolderId: PROFILE2,
+          status: 'inactive',
+          title: 'Draft other user',
+          version: [
+            {
+              status: 'draft',
+              data: {}
+            }
+          ]
+        },
+        {
+          establishmentId: 101,
+          licenceHolderId: PROFILE,
+          status: 'inactive',
+          title: 'Draft other establishment',
+          version: [
+            {
+              status: 'draft',
+              data: {}
+            }
+          ]
+        },
+        {
+          establishmentId: 100,
+          licenceHolderId: PROFILE,
+          status: 'active',
+          title: 'Active',
+          version: [
+            {
+              status: 'granted',
+              data: {}
+            }
+          ]
+        }
+      ]));
   });
 
   after(() => {
@@ -146,6 +204,74 @@ describe('Permissions resolver', () => {
         .then(associations => {
           assert.equal(associations.length, 1);
           assert.equal(associations[0].role, 'basic');
+        });
+    });
+
+    it('removes draft projects held by the user at the establishment', () => {
+      const opts = {
+        action: 'delete',
+        data: {
+          establishmentId: 100,
+          profileId: PROFILE
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.permissions(opts))
+        .then(() => this.models.Project.query().where({ establishmentId: 100, licenceHolderId: PROFILE }))
+        .then(projects => {
+          assert.ok(!projects.map(p => p.title).includes('Draft'));
+        });
+    });
+
+    it('does not remove draft projects held by the user at other establishments', () => {
+      const opts = {
+        action: 'delete',
+        data: {
+          establishmentId: 100,
+          profileId: PROFILE
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.permissions(opts))
+        .then(() => this.models.Project.query().where({ establishmentId: 101, licenceHolderId: PROFILE }))
+        .then(projects => {
+          assert.ok(projects.map(p => p.title).includes('Draft other establishment'));
+        });
+    });
+
+    it('does not remove active projects held by the user at the establishment', () => {
+      const opts = {
+        action: 'delete',
+        data: {
+          establishmentId: 100,
+          profileId: PROFILE
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.permissions(opts))
+        .then(() => this.models.Project.query().where({ establishmentId: 100, licenceHolderId: PROFILE }))
+        .then(projects => {
+          assert.ok(projects.map(p => p.title).includes('Active'));
+        });
+    });
+
+    it('does not remove draft projects held by other users at the establishment', () => {
+      const opts = {
+        action: 'delete',
+        data: {
+          establishmentId: 100,
+          profileId: PROFILE
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.permissions(opts))
+        .then(() => this.models.Project.query().where({ establishmentId: 100, licenceHolderId: PROFILE2 }))
+        .then(projects => {
+          assert.ok(projects.map(p => p.title).includes('Draft other user'));
         });
     });
   });
