@@ -1121,6 +1121,39 @@ describe('Project resolver', () => {
         });
     });
 
+    it('removes establishments if additional establishments is set to false', () => {
+      const opts = {
+        action: 'grant',
+        id: projectId
+      };
+      const versionId = generateUuid();
+      const version = {
+        id: versionId,
+        projectId,
+        status: 'submitted',
+        data: {
+          'other-establishments': false,
+          establishments: [
+            {
+              'establishment-id': 100
+            },
+            {
+              'establishment-id': 101
+            }
+          ]
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.ProjectVersion.query().insert(version))
+        .then(() => this.project(opts))
+        .then(() => this.models.ProjectVersion.query().findById(versionId))
+        .then(version => {
+          assert.deepStrictEqual(version.data.establishments, []);
+        });
+
+    });
+
     it('resolves if project version is already granted', () => {
       const opts = {
         action: 'grant',
