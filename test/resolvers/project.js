@@ -1529,6 +1529,7 @@ describe('Project resolver', () => {
           id: projectId2
         };
         const lastGrantedVersion = generateUuid();
+        const versionToGrant = generateUuid();
         const versions = [
           {
             id: lastGrantedVersion,
@@ -1546,11 +1547,16 @@ describe('Project resolver', () => {
             updatedAt: new Date('2019-10-11').toISOString()
           },
           {
-            id: generateUuid(),
+            id: versionToGrant,
             projectId: projectId2,
             status: 'submitted',
             data: {
-              establishments: [],
+              establishments: [
+                {
+                  'establishment-id': 8202,
+                  deleted: true
+                }
+              ],
               'other-establishments': true
             },
             createdAt: new Date('2020-10-11').toISOString(),
@@ -1565,6 +1571,10 @@ describe('Project resolver', () => {
           .then(projectEstablishment => {
             assert.equal(projectEstablishment.status, 'removed');
             assert.equal(projectEstablishment.versionId, lastGrantedVersion);
+          })
+          .then(() => this.models.ProjectVersion.query().findById(versionToGrant))
+          .then(version => {
+            assert.equal(version.data.establishments.length, 0, 'deleted establishments are stripped from the granted version data');
           });
       });
 
