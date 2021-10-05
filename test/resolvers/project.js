@@ -2533,7 +2533,7 @@ describe('Project resolver', () => {
             id: '574266e5-ef34-4e34-bf75-7b6201357e75',
             projectId: projectId,
             data: {
-              experience: 'Previous applicant experience'
+              'experience-knowledge': 'Previous applicant experience'
             },
             status: 'granted',
             createdAt: new Date('2020-01-17').toISOString()
@@ -2542,7 +2542,7 @@ describe('Project resolver', () => {
             id: '574266e5-ef34-4e34-bf75-7b6201357e76',
             projectId: projectId2,
             data: {
-              experience: 'Previous applicant experience'
+              'experience-knowledge': 'Previous applicant experience'
             },
             status: 'draft',
             createdAt: new Date('2020-01-17').toISOString()
@@ -2555,10 +2555,8 @@ describe('Project resolver', () => {
         action: 'update',
         id: projectId,
         data: {
-          licenceHolderId: holcId
-        },
-        meta: {
-          experience: 'Some new experience content'
+          licenceHolderId: holcId,
+          'experience-knowledge': 'Some new experience content'
         }
       };
       return Promise.resolve()
@@ -2567,8 +2565,8 @@ describe('Project resolver', () => {
         .then(project => {
           assert.equal(project.version.length, 2);
           assert.ok(project.version.every(version => version.status === 'granted'));
-          assert.equal(project.version[0].data.experience, 'Previous applicant experience');
-          assert.equal(project.version[1].data.experience, 'Some new experience content');
+          assert.equal(project.version[0].data['experience-knowledge'], 'Previous applicant experience');
+          assert.equal(project.version[1].data['experience-knowledge'], 'Some new experience content');
         });
     });
 
@@ -2593,10 +2591,8 @@ describe('Project resolver', () => {
         action: 'update',
         id: projectId2,
         data: {
-          licenceHolderId: holcId
-        },
-        meta: {
-          experience: 'Some new experience content'
+          licenceHolderId: holcId,
+          'experience-knowledge': 'Some new experience content'
         }
       };
       return Promise.resolve()
@@ -2605,7 +2601,7 @@ describe('Project resolver', () => {
         .then(project => {
           assert.equal(project.version.length, 1);
           assert.equal(project.version[0].status, 'draft');
-          assert.equal(project.version[0].data.experience, 'Some new experience content');
+          assert.equal(project.version[0].data['experience-knowledge'], 'Some new experience content');
         });
     });
 
