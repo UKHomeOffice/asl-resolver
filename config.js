@@ -12,7 +12,8 @@ module.exports = {
     secret: process.env.S3_SECRET,
     bucket: process.env.S3_BUCKET,
     transportKey: process.env.TRANSPORT_KEY,
-    transportIV: process.env.TRANSPORT_IV
+    transportIV: process.env.TRANSPORT_IV,
+    localstackUrl: process.env.S3_LOCALSTACK_URL
   },
   db: {
     database: process.env.DATABASE_NAME,

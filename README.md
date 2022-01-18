@@ -39,6 +39,7 @@ The following environment variables are required:
 * `S3_ACCESS_KEY` - access key used to query S3
 * `S3_SECRET` - secret used to query S3
 * `S3_BUCKET` - the S3 bucket name
+* `S3_LOCALSTACK_URL` - the URL for the localstack s3 instance (dev only)
 * `JWT_SECRET` - arbitrary string used to sign JWT tokens for invitations
 * `EMAILER_SERVICE` - url of `asl-emailer` instance used to send invitations
 * `REGISTER_SERVICE` - url of `asl-register` instance used to accept invitations
