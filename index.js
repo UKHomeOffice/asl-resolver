@@ -17,6 +17,7 @@ const sqs = new AWS.SQS({
 const app = Consumer.create({
   queueUrl: config.sqs.url,
   handleMessage,
+  batchSize: 10,
   sqs
 });
 
