@@ -1,4 +1,4 @@
-const Consumer = require('sqs-consumer');
+const { Consumer } = require('sqs-consumer');
 const AWS = require('aws-sdk');
 const config = require('./config');
 
