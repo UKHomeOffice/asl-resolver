@@ -279,6 +279,23 @@ describe('ProjectVersion resolver', () => {
             assert.equal(projectEstablishment, null);
           });
       });
+
+      it('removes draft ProjectEstablishment relations if establishments are marked as deleted', () => {
+        const opts = {
+          action: 'patch',
+          id: versionId,
+          data: {
+            patch: jsondiff.diff({}, { establishments: [{ 'establishment-id': 8202, deleted: true }], 'other-establishments': true })
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.models.ProjectEstablishment.query().insert({ establishmentId: 8202, projectId, status: 'draft' }))
+          .then(() => this.projectVersion(opts))
+          .then(() => this.models.ProjectEstablishment.query().where({ establishmentId: 8202, projectId }).first())
+          .then(projectEstablishment => {
+            assert.equal(projectEstablishment, null);
+          });
+      });
     });
 
   });
