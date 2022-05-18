@@ -394,7 +394,7 @@ describe('Profile resolver', () => {
         });
     });
 
-    it('transfers pil licence number from active PIL to target profile if both profiles have PIL number', () => {
+    it('leaves pil licence number intact on target profile', () => {
       const params = {
         action: 'merge',
         data: {
@@ -405,38 +405,8 @@ describe('Profile resolver', () => {
       return Promise.resolve()
         .then(() => {
           return this.models.PIL.query().insert([
-            { profileId: ID_1, licenceNumber: 'abc', status: 'active', establishmentId: EST_1 },
-            { profileId: ID_2, licenceNumber: 'def', status: 'inactive', establishmentId: EST_2 }
-          ]);
-        })
-        .then(() => {
-          return this.models.Profile.query().patch({ pilLicenceNumber: 'abc' }).where({ id: ID_1 });
-        })
-        .then(() => {
-          return this.models.Profile.query().patch({ pilLicenceNumber: 'def' }).where({ id: ID_2 });
-        })
-        .then(() => this.profile(params))
-        .then(() => {
-          return this.models.Profile.query().findById(ID_2);
-        })
-        .then(profile => {
-          assert.equal(profile.pilLicenceNumber, 'abc');
-        });
-    });
-
-    it('leaves pil licence number from active PIL intact on target profile', () => {
-      const params = {
-        action: 'merge',
-        data: {
-          target: ID_2
-        },
-        id: ID_1
-      };
-      return Promise.resolve()
-        .then(() => {
-          return this.models.PIL.query().insert([
-            { profileId: ID_1, licenceNumber: 'abc', status: 'inactive', establishmentId: EST_1 },
-            { profileId: ID_2, licenceNumber: 'def', status: 'active', establishmentId: EST_2 }
+            { profileId: ID_1, licenceNumber: null, status: 'active', establishmentId: EST_1 },
+            { profileId: ID_2, licenceNumber: null, status: 'inactive', establishmentId: EST_2 }
           ]);
         })
         .then(() => {
