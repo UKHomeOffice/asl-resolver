@@ -1026,7 +1026,7 @@ describe('Project resolver', () => {
       return Promise.resolve()
         .then(() => this.models.ProjectVersion.query().insert(version))
         .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId).eager('version'))
+        .then(() => this.models.Project.query().findById(projectId).withGraphFetched('version'))
         .then(project => {
           assert.equal(project.version[0].data.protocols.length, 1, 'Expected protocol to be removed');
         });
@@ -2561,7 +2561,12 @@ describe('Project resolver', () => {
       };
       return Promise.resolve()
         .then(() => this.project(opts))
-        .then(() => this.models.Project.query().eager('version').findById(projectId))
+        .then(() => {
+          return this.models.Project.query()
+            .withGraphFetched('version(orderByUpdatedAt)')
+            .findById(projectId)
+            .modifiers({ orderByUpdatedAt: builder => builder.orderBy('updatedAt', 'asc') });
+        })
         .then(project => {
           assert.equal(project.version.length, 2);
           assert.ok(project.version.every(version => version.status === 'granted'));
@@ -2597,7 +2602,7 @@ describe('Project resolver', () => {
       };
       return Promise.resolve()
         .then(() => this.project(opts))
-        .then(() => this.models.Project.query().eager('version').findById(projectId2))
+        .then(() => this.models.Project.query().withGraphFetched('version').findById(projectId2))
         .then(project => {
           assert.equal(project.version.length, 1);
           assert.equal(project.version[0].status, 'draft');
@@ -2656,7 +2661,7 @@ describe('Project resolver', () => {
 
       return Promise.resolve()
         .then(() => this.project(opts))
-        .then(() => this.models.Project.query().eager('version'))
+        .then(() => this.models.Project.query().withGraphFetched('version'))
         .then(projects => projects[0])
         .then(project => {
           assert.equal(project.status, 'active', 'the project should be active');
@@ -2796,7 +2801,7 @@ describe('Project resolver', () => {
 
           return Promise.resolve()
             .then(() => this.project(opts))
-            .then(() => this.models.Project.query().findById(projectId).eager('version'))
+            .then(() => this.models.Project.query().findById(projectId).withGraphFetched('version'))
             .then(project => {
               assert.equal(project.status, 'active', 'the project should still be active');
               assert.equal(project.title, conversionTitle, 'the project title should reflect the converted version');
@@ -2859,7 +2864,7 @@ describe('Project resolver', () => {
 
           return Promise.resolve()
             .then(() => this.project(opts))
-            .then(() => this.models.Project.queryWithDeleted().findById(projectId).eager('version'))
+            .then(() => this.models.Project.queryWithDeleted().findById(projectId).withGraphFetched('version'))
             .then(project => {
               assert(project.deleted, 'the project should be deleted');
               assert(moment(project.deleted).isValid(), 'the project deleted date should be valid');
