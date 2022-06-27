@@ -2,6 +2,8 @@ const Schema = require('@asl/schema');
 const settings = require('@asl/schema/knexfile').test;
 
 const tables = [
+  'ReminderDismissed',
+  'Reminder',
   'EnforcementFlag',
   'EnforcementSubject',
   'EnforcementCase',
