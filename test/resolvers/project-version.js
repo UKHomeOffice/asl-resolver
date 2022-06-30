@@ -300,4 +300,171 @@ describe('ProjectVersion resolver', () => {
 
   });
 
+  describe('updateConditions', () => {
+
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Hypoxy and angiogenesis in cancer therapy',
+            issueDate: new Date('2019-07-11').toISOString(),
+            expiryDate: new Date('2022-07-11').toISOString(),
+            licenceNumber: 'PP-627808',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            id: versionId,
+            projectId,
+            data: {},
+            status: 'granted'
+          },
+          {
+            id: draftVersionId,
+            projectId,
+            data: {},
+            status: 'draft'
+          }
+        ]));
+    });
+
+    it('can update the conditions on the project', () => {
+      const opts = {
+        action: 'updateConditions',
+        id: draftVersionId,
+        data: {
+          conditions: [
+            {
+              key: 'poles',
+              path: 'poles.versions.0',
+              type: 'condition',
+              edited: 'Some POLE condition'
+            }
+          ]
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.projectVersion(opts))
+        .then(() => this.models.ProjectVersion.query().findById(draftVersionId))
+        .then(version => {
+          assert.deepEqual(version.data.conditions, opts.data.conditions, 'the conditions should match the updated conditions');
+        });
+    });
+
+    it('can update the condition reminders on the project', () => {
+      const opts = {
+        action: 'updateConditions',
+        id: draftVersionId,
+        data: {
+          conditions: [
+            {
+              key: 'poles',
+              path: 'poles.versions.0',
+              type: 'condition',
+              edited: 'Some POLE condition',
+              autoAdded: true,
+              reminders: {
+                poles: [
+                  {
+                    id: '8646d19e-9842-4f01-bd49-af987c8c6c0c',
+                    deadline: '2023-01-01'
+                  },
+                  {
+                    id: '99a5e7ae-d601-417c-a9ba-4487bfd47c79',
+                    deadline: '2023-02-02'
+                  }
+                ],
+                active: [ 'poles' ]
+              }
+            }
+          ]
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.projectVersion(opts))
+        .then(() => this.models.ProjectVersion.query().findById(draftVersionId))
+        .then(version => {
+          const condition = version.data.conditions[0];
+          assert.ok(!condition.reminders, 'the reminders should not be saved in the condition');
+        })
+        .then(() => this.models.Reminder.query().where({ modelType: 'project', modelId: projectId }))
+        .then(reminders => {
+          assert.deepEqual(reminders.length, 2, 'there should be two reminders');
+          assert.ok(reminders.every(r => r.status === 'pending'), 'all the reminders should be pending');
+          assert.ok(reminders.every(r => r.conditionKey === 'poles'), 'all the reminders should be for the poles condition');
+          assert.ok(reminders.find(r => r.deadline === '2023-01-01'), 'the first deadline should be present');
+          assert.ok(reminders.find(r => r.deadline === '2023-02-02'), 'the second deadline should be present');
+        });
+    });
+
+    it('can remove the condition reminders on the project', () => {
+      const reminders = [
+        {
+          id: '8646d19e-9842-4f01-bd49-af987c8c6c0c',
+          deadline: '2023-01-01',
+          modelType: 'project',
+          modelId: projectId,
+          establishmentId: 8201,
+          conditionKey: 'poles'
+        },
+        {
+          id: '99a5e7ae-d601-417c-a9ba-4487bfd47c79',
+          deadline: '2023-02-02',
+          modelType: 'project',
+          modelId: projectId,
+          establishmentId: 8201,
+          conditionKey: 'poles'
+        }
+      ];
+
+      const opts = {
+        action: 'updateConditions',
+        id: draftVersionId,
+        data: {
+          conditions: [
+            {
+              key: 'poles',
+              path: 'poles.versions.0',
+              type: 'condition',
+              edited: 'Some POLE condition',
+              autoAdded: true,
+              reminders: {
+                poles: [
+                  {
+                    id: '8646d19e-9842-4f01-bd49-af987c8c6c0c',
+                    deadline: '2023-01-01'
+                  },
+                  {
+                    id: '99a5e7ae-d601-417c-a9ba-4487bfd47c79',
+                    deadline: '2023-02-02'
+                  }
+                ],
+                active: [ ] // <-- poles reminders checkbox was unticked
+              }
+            }
+          ]
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.Reminder.query().insert(reminders))
+        .then(() => this.projectVersion(opts))
+        .then(() => this.models.Reminder.query().where({ modelType: 'project', modelId: projectId }))
+        .then(reminders => {
+          assert.deepEqual(reminders.length, 0, 'there should be no reminders');
+        })
+        .then(() => this.models.Reminder.queryWithDeleted().where({ modelType: 'project', modelId: projectId }))
+        .then(reminders => {
+          assert.ok(reminders.every(r => r.deleted), 'all the reminders should be deleted');
+        });
+    });
+
+  });
+
 });
