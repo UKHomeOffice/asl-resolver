@@ -1121,6 +1121,120 @@ describe('Project resolver', () => {
         });
     });
 
+    describe('condition reminders', () => {
+
+      it('activates pending reminders for conditions that were granted', () => {
+        const version = {
+          id: generateUuid(),
+          projectId,
+          status: 'submitted',
+          data: {
+            conditions: [
+              {
+                autoAdded: true,
+                key: 'non-purpose-bred-sched-2',
+                path: 'non-purpose-bred-sched-2.versions.0',
+                type: 'condition'
+              },
+              {
+                autoAdded: true,
+                key: 'code-of-practice',
+                path: 'code-of-practice.versions.0',
+                type: 'condition'
+              }
+            ]
+          }
+        };
+
+        const reminders = [
+          {
+            modelType: 'project',
+            modelId: projectId,
+            establishmentId: 8201,
+            deadline: '2022-07-01',
+            conditionKey: 'non-purpose-bred-sched-2',
+            status: 'pending'
+          },
+          {
+            modelType: 'project',
+            modelId: projectId,
+            establishmentId: 8201,
+            deadline: '2022-08-01',
+            conditionKey: 'code-of-practice',
+            status: 'pending'
+          }
+        ];
+
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.models.Reminder.query().insert(reminders))
+          .then(() => this.project(opts))
+          .then(() => this.models.Reminder.query().where({ modelType: 'project', modelId: projectId }))
+          .then(reminders => {
+            assert.deepEqual(reminders.length, 2, 'there should be two reminders');
+            assert.ok(reminders.every(r => r.status === 'active'), 'all the reminders should be active');
+          });
+      });
+
+      it('soft deletes reminders that were orphaned by the removal of a condition', () => {
+        const version = {
+          id: generateUuid(),
+          projectId,
+          status: 'submitted',
+          data: {
+            conditions: [
+              {
+                autoAdded: true,
+                key: 'code-of-practice',
+                path: 'code-of-practice.versions.0',
+                type: 'condition'
+              }
+            ]
+          }
+        };
+
+        const reminders = [
+          {
+            modelType: 'project',
+            modelId: projectId,
+            establishmentId: 8201,
+            deadline: '2022-07-01',
+            conditionKey: 'non-purpose-bred-sched-2',
+            status: 'active'
+          },
+          {
+            modelType: 'project',
+            modelId: projectId,
+            establishmentId: 8201,
+            deadline: '2022-08-01',
+            conditionKey: 'code-of-practice',
+            status: 'active'
+          }
+        ];
+
+        const opts = {
+          action: 'grant',
+          id: projectId
+        };
+
+        return Promise.resolve()
+          .then(() => this.models.ProjectVersion.query().insert(version))
+          .then(() => this.models.Reminder.query().insert(reminders))
+          .then(() => this.project(opts))
+          .then(() => this.models.Reminder.query().where({ modelType: 'project', modelId: projectId }))
+          .then(reminders => {
+            assert.deepEqual(reminders.length, 1, 'there should be only one reminder');
+            assert.deepEqual(reminders[0].conditionKey, 'code-of-practice', 'the reminder should be for the correct condition');
+          });
+      });
+
+    });
+
     it('removes establishments if additional establishments is set to false', () => {
       const opts = {
         action: 'grant',
@@ -2227,6 +2341,50 @@ describe('Project resolver', () => {
         .then(() => this.models.ProjectVersion.query().where({ projectId: projectId2 }))
         .then(versions => {
           assert.equal(versions.length, 2);
+        });
+    });
+
+    it('soft deletes all pending reminders', () => {
+      const reminders = [
+        {
+          modelType: 'project',
+          modelId: projectId2,
+          establishmentId: 8201,
+          deadline: '2022-07-01',
+          conditionKey: 'non-purpose-bred-sched-2',
+          status: 'pending'
+        },
+        {
+          modelType: 'project',
+          modelId: projectId2,
+          establishmentId: 8201,
+          deadline: '2022-08-01',
+          conditionKey: 'code-of-practice',
+          status: 'pending'
+        },
+        {
+          modelType: 'project',
+          modelId: projectId2,
+          establishmentId: 8201,
+          deadline: '2022-09-01',
+          conditionKey: 'nmbas',
+          status: 'active'
+        }
+      ];
+
+      const opts = {
+        action: 'delete-amendments',
+        id: projectId2
+      };
+
+      return Promise.resolve()
+        .then(() => this.models.Reminder.query().insert(reminders))
+        .then(() => this.project(opts))
+        .then(() => this.models.Reminder.query().where({ modelType: 'project', modelId: projectId2 }))
+        .then(reminders => {
+          assert.deepEqual(reminders.length, 1, 'there should be only one reminder');
+          assert.deepEqual(reminders[0].status, 'active', 'the reminder should still be active');
+          assert.deepEqual(reminders[0].conditionKey, 'nmbas', 'the reminder should be for the correct condition');
         });
     });
   });
