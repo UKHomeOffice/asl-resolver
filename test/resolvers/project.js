@@ -2156,6 +2156,57 @@ describe('Project resolver', () => {
         assert.equal(oldProject.additionalEstablishments.length, 1);
         assert.equal(oldProject.additionalEstablishments[0].id, 8202);
       });
+
+      it('moves any project reminders to the new project', async () => {
+        await this.models.ProjectVersion.query().findOne({ projectId }).patch({
+          data: {
+            transferToEstablishment: 8203,
+            conditions: [
+              {
+                autoAdded: true,
+                key: 'non-purpose-bred-sched-2',
+                path: 'non-purpose-bred-sched-2.versions.0',
+                type: 'condition'
+              },
+              {
+                autoAdded: true,
+                key: 'code-of-practice',
+                path: 'code-of-practice.versions.0',
+                type: 'condition'
+              }
+            ]
+          }
+        });
+
+        await this.models.Reminder.query().insert([
+          {
+            modelType: 'project',
+            modelId: projectId,
+            establishmentId: 8201,
+            deadline: '2022-07-01',
+            conditionKey: 'non-purpose-bred-sched-2',
+            status: 'active'
+          },
+          {
+            modelType: 'project',
+            modelId: projectId,
+            establishmentId: 8201,
+            deadline: '2022-08-01',
+            conditionKey: 'code-of-practice',
+            status: 'active'
+          }
+        ]);
+
+        await this.project(this.input);
+
+        const oldProjectReminders = await this.models.Reminder.query().where({ modelId: projectId });
+        assert.deepEqual(oldProjectReminders.length, 0, 'there should be no-longer be reminders at the old project');
+
+        const newProject = await this.models.Project.query().findOne({ establishmentId: 8203 });
+        const newProjectReminders = await this.models.Reminder.query().where({ modelId: newProject.id });
+        assert.deepEqual(newProjectReminders.length, 2, 'there should be two reminders at the new project');
+        assert.ok(newProjectReminders.every(r => r.establishmentId === 8203), 'the establishmentId should be updated to the transfer destination');
+      });
     });
   });
 
