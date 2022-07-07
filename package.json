@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/UKHomeOffice/asl-resolver#readme",
   "dependencies": {
-    "@asl/constants": "^0.7.1",
+    "@asl/constants": "^1.2.1",
     "@asl/schema": "^10.7.0",
     "@asl/service": "^8.10.0",
     "aws-sdk": "^2.814.0",
