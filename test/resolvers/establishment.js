@@ -102,4 +102,121 @@ describe('Establishment resolver', () => {
 
   });
 
+  describe('Update conditions', () => {
+    beforeEach(() => {
+      return this.models.Establishment.query().insert({ id: 101, name: 'Research 101', status: 'active' });
+    });
+
+    it('can update the existing conditions', () => {
+      const opts = {
+        id: 101,
+        action: 'update-conditions',
+        data: {
+          conditions: 'Some new conditions'
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.establishment(opts))
+        .then(() => this.models.Establishment.query().findById(101))
+        .then(establishment => {
+          assert.deepEqual(establishment.conditions, 'Some new conditions', 'the conditions should be updated');
+        });
+    });
+
+    it('can save a new condition reminder', () => {
+      const opts = {
+        id: 101,
+        action: 'update-conditions',
+        data: {
+          conditions: 'Some new conditions',
+          reminder: {
+            deadline: '2022-07-03'
+          }
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.establishment(opts))
+        .then(() => this.models.Reminder.query().where({ modelType: 'establishment', establishmentId: 101 }))
+        .then(reminders => {
+          assert.deepEqual(reminders.length, 1, 'there should be a single reminder');
+          assert.deepEqual(reminders[0].deadline, '2022-07-03', 'the deadline should be correct');
+          assert.deepEqual(reminders[0].status, 'active', 'the status should be active');
+          assert.deepEqual(reminders[0].deleted, null, 'the deleted column should be null');
+        });
+    });
+
+    it('can update an existing condition reminder', () => {
+      const reminder = {
+        deadline: '2022-07-03',
+        modelType: 'establishment',
+        establishmentId: 101,
+        status: 'active'
+      };
+
+      return this.models.Reminder.query().insert(reminder).returning('id')
+        .then(reminder => {
+          const opts = {
+            id: 101,
+            action: 'update-conditions',
+            data: {
+              conditions: 'Some new conditions',
+              reminder: {
+                id: reminder.id,
+                deadline: '2022-11-22'
+              }
+            }
+          };
+
+          return Promise.resolve()
+            .then(() => this.establishment(opts))
+            .then(() => this.models.Reminder.query().where({ modelType: 'establishment', establishmentId: 101 }))
+            .then(reminders => {
+              assert.deepEqual(reminders.length, 1, 'there should be a single reminder');
+              assert.deepEqual(reminders[0].deadline, '2022-11-22', 'the deadline should be updated');
+              assert.deepEqual(reminders[0].status, 'active', 'the status should still be active');
+              assert.deepEqual(reminders[0].deleted, null, 'the deleted column should be null');
+            });
+        });
+    });
+
+    it('can delete an existing condition reminder', () => {
+      const reminder = {
+        deadline: '2022-07-03',
+        modelType: 'establishment',
+        establishmentId: 101,
+        status: 'active'
+      };
+
+      return this.models.Reminder.query().insert(reminder).returning('id')
+        .then(reminder => {
+          const opts = {
+            id: 101,
+            action: 'update-conditions',
+            data: {
+              conditions: 'Some new conditions',
+              reminder: {
+                id: reminder.id,
+                deleted: true
+              }
+            }
+          };
+
+          return Promise.resolve()
+            .then(() => this.establishment(opts))
+            .then(() => this.models.Reminder.query().where({ modelType: 'establishment', establishmentId: 101 }))
+            .then(reminders => {
+              assert.deepEqual(reminders.length, 0, 'there should be no reminders returned in the standard query');
+            })
+            .then(() => this.models.Reminder.queryWithDeleted().where({ modelType: 'establishment', establishmentId: 101 }))
+            .then(reminders => {
+              assert.deepEqual(reminders.length, 1, 'there should be a single deleted reminder');
+              assert.ok(reminders[0].deleted, 'the deleted column should be set');
+              assert(moment(reminders[0].deleted).isValid(), 'deleted date is a valid date');
+            });
+        });
+    });
+  });
+
 });
