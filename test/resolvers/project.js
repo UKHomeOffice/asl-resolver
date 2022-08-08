@@ -2590,6 +2590,76 @@ describe('Project resolver', () => {
     });
   });
 
+  describe('refuse', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'inactive',
+            title: 'Draft project to be refused',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          },
+          {
+            id: projectId2,
+            status: 'active',
+            title: 'Active project cannot be refused',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]))
+        .then(() => this.models.ProjectVersion.query().insert([
+          {
+            projectId,
+            status: 'submitted',
+            data: {}
+          },
+          {
+            projectId: projectId2,
+            status: 'granted',
+            data: {}
+          }
+        ]));
+    });
+
+    it('cannot refuse an active project', () => {
+      const opts = {
+        action: 'refuse',
+        id: projectId2,
+        data: {
+          establishmentId,
+          licenceHolderId: profileId
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => assert.rejects(() => this.project(opts)))
+        .then(() => this.models.Project.query().findById(projectId2))
+        .then(project => {
+          assert.equal(project.refusedDate, null);
+        });
+    });
+
+    it('can refuse a draft project', () => {
+      const opts = {
+        action: 'refuse',
+        id: projectId,
+        data: {
+          establishmentId,
+          licenceHolderId: profileId
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(projectId))
+        .then(project => {
+          assert.ok(project.refusedDate && moment(project.refusedDate).isValid(), 'refused date should be set');
+        });
+    });
+  });
+
   describe('update-issue-date', () => {
     beforeEach(() => {
       const originalIssueDate = new Date('2020-01-17').toISOString();
