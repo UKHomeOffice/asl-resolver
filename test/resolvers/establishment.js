@@ -3,6 +3,11 @@ const moment = require('moment');
 const { establishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
+const nowish = (a, b, n = 3) => {
+  const diff = moment(a).diff(b, 'seconds');
+  return Math.abs(diff) < n;
+};
+
 describe('Establishment resolver', () => {
   before(() => {
     this.models = db.init();
@@ -215,6 +220,56 @@ describe('Establishment resolver', () => {
               assert.ok(reminders[0].deleted, 'the deleted column should be set');
               assert(moment(reminders[0].deleted).isValid(), 'deleted date is a valid date');
             });
+        });
+    });
+  });
+
+  describe('Update billing data', () => {
+    beforeEach(() => {
+      return this.models.Establishment.query().insert({
+        id: 101,
+        name: 'Research 101',
+        status: 'active',
+        billing: {
+          contactName: 'Dagny Aberkirder',
+          contactNumber: '0181 811 8181'
+        },
+        updatedAt: '2018-01-01T12:00:00.000Z'
+      });
+    });
+
+    it('can update the billing contact information', () => {
+      const opts = {
+        id: 101,
+        action: 'update-billing',
+        data: {
+          contactName: 'Bruce Banner'
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.establishment(opts))
+        .then(() => this.models.Establishment.query().findById(101))
+        .then(establishment => {
+          assert.equal(establishment.billing.contactName, 'Bruce Banner');
+          assert.ok(nowish(establishment.billing.updatedAt), 'timestamp should be updated to current time');
+        });
+    });
+
+    it('does not update the `updated_at` timestamp on the establishment', () => {
+      const opts = {
+        id: 101,
+        action: 'update-billing',
+        data: {
+          contactName: 'Bruce Banner'
+        }
+      };
+
+      return Promise.resolve()
+        .then(() => this.establishment(opts))
+        .then(() => this.models.Establishment.query().findById(101))
+        .then(establishment => {
+          assert.equal(establishment.updatedAt, '2018-01-01T12:00:00.000Z');
         });
     });
   });
