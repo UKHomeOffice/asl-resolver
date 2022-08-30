@@ -38,6 +38,15 @@ const LICENSING = {
   asruLicensing: true
 };
 
+const INSPECTOR = {
+  id: 'a942ffc7-e7ca-4d76-a001-0b5048a057d1',
+  firstName: 'Inspector',
+  lastName: 'Morse',
+  email: 'asru-inspector@example.com',
+  asruUser: true,
+  asruInspector: true
+};
+
 const CONDITIONS_PIL = {
   id: '92bec570-ca04-47b2-bafc-43e95fb7f564',
   profileId: PILH.id,
@@ -251,6 +260,44 @@ describe('PIL resolver', () => {
             assert(transfers[0].pilId === opts.id);
             assert(transfers[0].fromEstablishmentId === opts.data.establishment.from.id);
             assert(transfers[0].toEstablishmentId === opts.data.establishment.to.id);
+          });
+      });
+    });
+
+    describe('Suspend', () => {
+      it('can suspend a PIL', () => {
+        const opts = {
+          id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
+          action: 'suspend',
+          changedBy: INSPECTOR.id,
+          data: {}
+        };
+
+        return Promise.resolve()
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.ok(pil.suspendedDate, 'it has as a suspended date');
+            assert(moment(pil.suspendedDate).isValid(), 'pil suspended date is a valid date');
+          });
+      });
+    });
+
+    describe('Reinstate', () => {
+      it('can reinstate a suspended PIL', () => {
+        const opts = {
+          id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
+          action: 'reinstate',
+          changedBy: INSPECTOR.id,
+          data: {}
+        };
+
+        return Promise.resolve()
+          .then(() => this.models.PIL.query().patchAndFetchById(opts.id, { suspendedDate: moment().toISOString() }))
+          .then(() => this.pil(opts))
+          .then(() => this.models.PIL.query().findById(opts.id))
+          .then(pil => {
+            assert.ok(!pil.suspendedDate, 'it no longer has a suspended date');
           });
       });
     });

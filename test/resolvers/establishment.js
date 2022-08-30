@@ -107,6 +107,57 @@ describe('Establishment resolver', () => {
 
   });
 
+  describe('Suspend', () => {
+    it('can suspend an establishment licence', () => {
+      return this.models.Establishment.query().insert({
+        id: 101,
+        name: 'Research 101',
+        status: 'active'
+      })
+        .then(() => {
+          const opts = {
+            id: 101,
+            action: 'suspend',
+            data: {}
+          };
+
+          return Promise.resolve()
+            .then(() => this.establishment(opts))
+            .then(() => this.models.Establishment.query().findById(opts.id))
+            .then(establishment => {
+              assert.ok(establishment.suspendedDate, 'has a suspended date');
+              assert.ok(moment(establishment.suspendedDate).isValid(), 'suspended date is a valid date');
+            });
+        });
+    });
+  });
+
+  describe('Reinstate', () => {
+    it('can reinstate an establishment licence', () => {
+      return this.models.Establishment.query().insert({
+        id: 101,
+        name: 'Research 101',
+        status: 'active',
+        suspendedDate: moment().toISOString()
+      })
+        .then(() => {
+          const opts = {
+            id: 101,
+            action: 'reinstate',
+            data: {}
+          };
+
+          return Promise.resolve()
+            .then(() => this.establishment(opts))
+            .then(() => this.models.Establishment.query().findById(opts.id))
+            .then(establishment => {
+              assert.ok(!establishment.suspendedDate, 'no longer has a suspended date');
+            });
+        });
+    });
+
+  });
+
   describe('Update conditions', () => {
     beforeEach(() => {
       return this.models.Establishment.query().insert({ id: 101, name: 'Research 101', status: 'active' });

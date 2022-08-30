@@ -13,6 +13,7 @@ const projectToForkId = generateUuid();
 
 const holcId = generateUuid();
 const licensingId = generateUuid();
+const inspectorId = generateUuid();
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -2656,6 +2657,70 @@ describe('Project resolver', () => {
         .then(() => this.models.Project.query().findById(projectId))
         .then(project => {
           assert.ok(project.refusedDate && moment(project.refusedDate).isValid(), 'refused date should be set');
+        });
+    });
+  });
+
+  describe('suspend', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Active project',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+        ]));
+    });
+
+    it('can suspend a project', () => {
+      const opts = {
+        id: projectId,
+        action: 'suspend',
+        changedBy: inspectorId,
+        data: {}
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(opts.id))
+        .then(project => {
+          assert.ok(project.suspendedDate, 'it has as a suspended date');
+          assert(moment(project.suspendedDate).isValid(), 'suspended date is a valid date');
+        });
+    });
+  });
+
+  describe('reinstate', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Project.query().insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Active project',
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            suspendedDate: moment().toISOString()
+          }
+        ]));
+    });
+
+    it('can reinstate a suspended project', () => {
+      const opts = {
+        id: projectId,
+        action: 'reinstate',
+        changedBy: inspectorId,
+        data: {}
+      };
+
+      return Promise.resolve()
+        .then(() => this.project(opts))
+        .then(() => this.models.Project.query().findById(opts.id))
+        .then(project => {
+          assert.ok(!project.suspendedDate, 'it no longer has a suspended date');
         });
     });
   });
