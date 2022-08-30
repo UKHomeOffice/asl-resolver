@@ -1,50 +1,18 @@
 const Schema = require('@asl/schema');
 const settings = require('@asl/schema/knexfile').test;
 
-const tables = [
-  'ReminderDismissed',
-  'Reminder',
-  'EnforcementFlag',
-  'EnforcementSubject',
-  'EnforcementCase',
-  'Changelog',
-  'EmailPreferences',
-  'Export',
-  'TrainingPil',
-  'TrainingCourse',
-  'ProjectEstablishment',
-  'Notification',
-  'ProjectProfile',
-  'RetrospectiveAssessment',
-  'Procedure',
-  'Rop',
-  'ProjectVersion',
-  'Project',
-  'Invitation',
-  'Permission',
-  'Authorisation',
-  'PilTransfer',
-  'FeeWaiver',
-  'PIL',
-  'PlaceRole',
-  'Place',
-  'Role',
-  'Certificate',
-  'Exemption',
-  'AsruEstablishment',
-  'Profile',
-  'Establishment'
-];
+const snakeCase = str => str.replace(/[A-Z]/g, s => `_${s.toLowerCase()}`);
 
 module.exports = {
   init: () => Schema(settings.connection),
   clean: schema => {
+    const tables = Object.keys(schema);
+
     return tables.reduce((p, table) => {
       return p.then(() => {
-        if (schema[table].queryWithDeleted) {
-          return schema[table].queryWithDeleted().hardDelete();
+        if (schema[table].tableName) {
+          return schema[table].knex().raw(`truncate ${snakeCase(schema[table].tableName)} cascade;`);
         }
-        return schema[table].query().delete();
       });
     }, Promise.resolve());
   }
