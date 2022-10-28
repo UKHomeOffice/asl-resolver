@@ -9,6 +9,7 @@ const PROFILE_ID_2 = uuid();
 const PROFILE_ID_3 = uuid();
 const ROLE_ID = uuid();
 const HOLC_ROLE_ID = uuid();
+const PELH_ROLE_ID = uuid();
 
 const NACWO_ROLE_ID = uuid();
 const NACWO_ROLE_ID_2 = uuid();
@@ -102,6 +103,12 @@ describe('Role resolver', () => {
           establishmentId: ESTABLISHMENT_ID_2,
           profileId: PROFILE_ID_3,
           type: 'nvs'
+        },
+        {
+          id: PELH_ROLE_ID,
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID,
+          type: 'pelh'
         }
       ]))
       .then(() => this.models.Place.query().insert([
@@ -336,5 +343,33 @@ describe('Role resolver', () => {
 
     });
 
+  });
+
+  describe('Replace', () => {
+
+    it('removes any existing roles and updates the establishment record', () => {
+      const opts = {
+        action: 'replace',
+        data: {
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID_2,
+          type: 'nprc',
+          replaceRoles: ['nprc', 'pelh']
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.role(opts))
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.ok(establishment);
+          nowish(establishment.updatedAt, new Date().toISOString());
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: ESTABLISHMENT_ID }).whereIn('type', ['pelh', 'nprc']))
+        .then(roles => {
+          assert.ok(roles.length === 1);
+          assert.ok(roles[0].type === 'nprc');
+          assert.ok(roles[0].profileId === PROFILE_ID_2);
+        });
+    });
   });
 });
