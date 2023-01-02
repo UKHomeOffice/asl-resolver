@@ -9,10 +9,18 @@ const PROFILE_ID_1 = uuid();
 const PROFILE_ID_2 = uuid();
 const NACWO_ROLE_ID_1 = uuid();
 const NACWO_ROLE_ID_2 = uuid();
+const REMINDER_ID = uuid();
 
 const nowish = (a, b, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
   assert.ok(Math.abs(diff) < n, `${a} should be within ${n} seconds of ${b}`);
+};
+
+const reminder = {
+  id: REMINDER_ID,
+  deadline: '2022-07-30',
+  modelType: 'establishment',
+  status: 'active'
 };
 
 describe('Place resolver', () => {
@@ -265,6 +273,85 @@ describe('Place resolver', () => {
           .then(establishment => {
             assert.ok(establishment);
             nowish(establishment.updatedAt, new Date().toISOString());
+          });
+      });
+
+      it('adds the establishment condition when included', () => {
+        const opts = {
+          action: 'update',
+          id: PLACE_ID3,
+          data: {
+            conditions: 'Test condition',
+            establishmentId: ESTABLISHMENT_ID
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.place(opts))
+          .then(() => this.models.Establishment.query().findById(8201))
+          .then(establishment => {
+            assert.ok(establishment);
+            nowish(establishment.updatedAt, new Date().toISOString());
+          });
+      });
+
+      it('adds the condition reminder when included', () => {
+        const opts = {
+          action: 'update',
+          id: PLACE_ID3,
+          data: {
+            conditions: 'Test condition',
+            reminder: JSON.stringify(reminder),
+            establishmentId: ESTABLISHMENT_ID
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.place(opts))
+          .then(() => this.models.Reminder.query().findById(REMINDER_ID))
+          .then(reminder => {
+            assert.ok(reminder);
+            nowish(reminder.updatedAt, new Date().toISOString());
+          });
+      });
+
+      it('removes the condition when it is blank (deleted)', () => {
+        const opts = {
+          action: 'update',
+          id: PLACE_ID3,
+          data: {
+            conditions: '',
+            establishmentId: ESTABLISHMENT_ID
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.place(opts))
+          .then(() => this.models.Establishment.query().findById(8201))
+          .then(establishment => {
+            assert.ok(establishment.conditions === null);
+            nowish(establishment.updatedAt, new Date().toISOString());
+          });
+      });
+
+      it('removes the reminder when it has the deleted flag', () => {
+        const opts = {
+          action: 'update',
+          id: PLACE_ID3,
+          data: {
+            conditions: 'Test condition',
+            reminder: JSON.stringify({
+              id: REMINDER_ID,
+              deadline: '2022-07-30',
+              modelType: 'establishment',
+              status: 'active',
+              deleted: true
+            }),
+            establishmentId: ESTABLISHMENT_ID
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.place(opts))
+          .then(() => this.models.Reminder.query().findById(REMINDER_ID))
+          .then(reminder => {
+            assert.ok(reminder === undefined);
           });
       });
 

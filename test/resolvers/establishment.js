@@ -2,10 +2,20 @@ const assert = require('assert');
 const moment = require('moment');
 const { establishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
+const {v4: uuid} = require("uuid");
 
 const nowish = (a, b, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
   return Math.abs(diff) < n;
+};
+
+const REMINDER_ID = uuid();
+
+const reminder = {
+  id: REMINDER_ID,
+  deadline: '2022-07-30',
+  modelType: 'establishment',
+  status: 'active'
 };
 
 describe('Establishment resolver', () => {
@@ -15,7 +25,14 @@ describe('Establishment resolver', () => {
   });
 
   beforeEach(() => {
-    return db.clean(this.models);
+    return db.clean(this.models)
+      .then(() => this.models.Establishment.query().insert([
+          {
+            id: 8201,
+            name: 'Univerty of Croydon',
+            updatedAt: '2019-01-01T10:38:43.666Z'
+          }
+        ]))
   });
 
   after(() => {
@@ -42,7 +59,7 @@ describe('Establishment resolver', () => {
       return Promise.resolve()
         .then(() => this.establishment(opts))
         .then(() => this.models.Establishment.query())
-        .then(establishments => establishments[0])
+        .then(establishments => establishments[1])
         .then(establishment => {
           assert.ok(establishment);
           assert.deepEqual(establishment.name, opts.data.name);
@@ -68,7 +85,7 @@ describe('Establishment resolver', () => {
           return Promise.resolve()
             .then(() => this.establishment(opts))
             .then(() => this.models.Establishment.query())
-            .then(establishments => establishments[0])
+            .then(establishments => establishments[1])
             .then(establishment => {
               assert.ok(establishment.licenceNumber, 'has a generated licence number');
               assert.deepEqual(establishment.status, 'active', 'status has been changed to active');
@@ -96,7 +113,7 @@ describe('Establishment resolver', () => {
           return Promise.resolve()
             .then(() => this.establishment(opts))
             .then(() => this.models.Establishment.query())
-            .then(establishments => establishments[0])
+            .then(establishments => establishments[1])
             .then(establishment => {
               assert.deepEqual(establishment.status, 'revoked', 'status has been changed to revoked');
               assert(establishment.revocationDate, 'has a revocation date');
@@ -323,6 +340,88 @@ describe('Establishment resolver', () => {
           assert.equal(establishment.updatedAt, '2018-01-01T12:00:00.000Z');
         });
     });
+  });
+
+  describe('Update establishment details', () => {
+
+    describe('Updating conditions', () => {
+
+      it('adds the establishment condition when included', () => {
+        const opts = {
+          action: 'update',
+          id: 8201,
+          data: {
+            conditions: 'Test condition',
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.establishment(opts))
+          .then(() => this.models.Establishment.query().findById(8201))
+          .then(establishment => {
+            assert.ok(establishment);
+            nowish(establishment.updatedAt, new Date().toISOString());
+          });
+      });
+
+      it('adds the condition reminder when included', () => {
+        const opts = {
+          action: 'update',
+          id: 8201,
+          data: {
+            conditions: 'Test condition',
+            reminder: JSON.stringify(reminder)
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.establishment(opts))
+          .then(() => this.models.Reminder.query().findById(REMINDER_ID))
+          .then(reminder => {
+            assert.ok(reminder);
+            nowish(reminder.updatedAt, new Date().toISOString());
+          });
+      });
+
+      it('removes the condition when it is blank (deleted)', () => {
+        const opts = {
+          action: 'update',
+          id: 8201,
+          data: {
+            conditions: '',
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.establishment(opts))
+          .then(() => this.models.Establishment.query().findById(8201))
+          .then(establishment => {
+            assert.ok(establishment.conditions === null);
+            nowish(establishment.updatedAt, new Date().toISOString());
+          });
+      });
+
+      it('removes the reminder when it has the deleted flag', () => {
+        const opts = {
+          action: 'update',
+          id: 8201,
+          data: {
+            conditions: 'Test condition',
+            reminder: JSON.stringify({
+              id: REMINDER_ID,
+              deadline: '2022-07-30',
+              modelType: 'establishment',
+              status: 'active',
+              deleted: true
+            }),
+          }
+        };
+        return Promise.resolve()
+          .then(() => this.establishment(opts))
+          .then(() => this.models.Reminder.query().findById(REMINDER_ID))
+          .then(reminder => {
+            assert.ok(reminder === undefined);
+          });
+      });
+    });
+
   });
 
 });
