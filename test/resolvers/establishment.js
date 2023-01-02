@@ -2,7 +2,7 @@ const assert = require('assert');
 const moment = require('moment');
 const { establishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const {v4: uuid} = require("uuid");
+const {v4: uuid} = require('uuid');
 
 const nowish = (a, b, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
@@ -27,12 +27,12 @@ describe('Establishment resolver', () => {
   beforeEach(() => {
     return db.clean(this.models)
       .then(() => this.models.Establishment.query().insert([
-          {
-            id: 8201,
-            name: 'Univerty of Croydon',
-            updatedAt: '2019-01-01T10:38:43.666Z'
-          }
-        ]))
+        {
+          id: 8201,
+          name: 'Univerty of Croydon',
+          updatedAt: '2019-01-01T10:38:43.666Z'
+        }
+      ]));
   });
 
   after(() => {
@@ -351,7 +351,7 @@ describe('Establishment resolver', () => {
           action: 'update',
           id: 8201,
           data: {
-            conditions: 'Test condition',
+            conditions: 'Test condition'
           }
         };
         return Promise.resolve()
@@ -386,7 +386,7 @@ describe('Establishment resolver', () => {
           action: 'update',
           id: 8201,
           data: {
-            conditions: '',
+            conditions: ''
           }
         };
         return Promise.resolve()
@@ -410,7 +410,7 @@ describe('Establishment resolver', () => {
               modelType: 'establishment',
               status: 'active',
               deleted: true
-            }),
+            })
           }
         };
         return Promise.resolve()
