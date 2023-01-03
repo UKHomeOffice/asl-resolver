@@ -290,6 +290,7 @@ describe('Place resolver', () => {
           .then(() => this.models.Establishment.query().findById(8201))
           .then(establishment => {
             assert.ok(establishment);
+            assert.ok(establishment.conditions === 'Test condition');
             nowish(establishment.updatedAt, new Date().toISOString());
           });
       });
@@ -306,6 +307,10 @@ describe('Place resolver', () => {
         };
         return Promise.resolve()
           .then(() => this.place(opts))
+          .then(() => this.models.Establishment.query().findById(8201))
+          .then(establishment => {
+            assert.ok(establishment.conditions === 'Test condition');
+          })
           .then(() => this.models.Reminder.query().findById(REMINDER_ID))
           .then(reminder => {
             assert.ok(reminder);

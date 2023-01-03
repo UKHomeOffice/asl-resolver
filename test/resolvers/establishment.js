@@ -25,14 +25,7 @@ describe('Establishment resolver', () => {
   });
 
   beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert([
-        {
-          id: 8201,
-          name: 'Univerty of Croydon',
-          updatedAt: '2019-01-01T10:38:43.666Z'
-        }
-      ]));
+    return db.clean(this.models);
   });
 
   after(() => {
@@ -59,7 +52,7 @@ describe('Establishment resolver', () => {
       return Promise.resolve()
         .then(() => this.establishment(opts))
         .then(() => this.models.Establishment.query())
-        .then(establishments => establishments[1])
+        .then(establishments => establishments[0])
         .then(establishment => {
           assert.ok(establishment);
           assert.deepEqual(establishment.name, opts.data.name);
@@ -85,7 +78,7 @@ describe('Establishment resolver', () => {
           return Promise.resolve()
             .then(() => this.establishment(opts))
             .then(() => this.models.Establishment.query())
-            .then(establishments => establishments[1])
+            .then(establishments => establishments[0])
             .then(establishment => {
               assert.ok(establishment.licenceNumber, 'has a generated licence number');
               assert.deepEqual(establishment.status, 'active', 'status has been changed to active');
@@ -113,7 +106,7 @@ describe('Establishment resolver', () => {
           return Promise.resolve()
             .then(() => this.establishment(opts))
             .then(() => this.models.Establishment.query())
-            .then(establishments => establishments[1])
+            .then(establishments => establishments[0])
             .then(establishment => {
               assert.deepEqual(establishment.status, 'revoked', 'status has been changed to revoked');
               assert(establishment.revocationDate, 'has a revocation date');
@@ -343,6 +336,16 @@ describe('Establishment resolver', () => {
   });
 
   describe('Update establishment details', () => {
+    beforeEach(() => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          {
+            id: 8201,
+            name: 'University of Croydon',
+            updatedAt: '2019-01-01T10:38:43.666Z'
+          }
+        ]));
+    });
 
     describe('Updating conditions', () => {
 
@@ -359,6 +362,7 @@ describe('Establishment resolver', () => {
           .then(() => this.models.Establishment.query().findById(8201))
           .then(establishment => {
             assert.ok(establishment);
+            assert.ok(establishment.conditions === 'Test condition');
             nowish(establishment.updatedAt, new Date().toISOString());
           });
       });
@@ -374,6 +378,9 @@ describe('Establishment resolver', () => {
         };
         return Promise.resolve()
           .then(() => this.establishment(opts))
+          .then((establishment) => {
+            assert.ok(establishment.conditions === 'Test condition');
+          })
           .then(() => this.models.Reminder.query().findById(REMINDER_ID))
           .then(reminder => {
             assert.ok(reminder);
