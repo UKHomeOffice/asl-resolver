@@ -7,6 +7,7 @@ const db = require('../helpers/db');
 const PROFILE_ID = uuid();
 const PROFILE_ID_2 = uuid();
 const PROFILE_ID_3 = uuid();
+const PROFILE_ID_4 = uuid();
 const ROLE_ID = uuid();
 const HOLC_ROLE_ID = uuid();
 const PELH_ROLE_ID = uuid();
@@ -19,12 +20,21 @@ const NVS_ROLE_ID_2 = uuid();
 const PLACE_ID_1 = uuid();
 const PLACE_ID_2 = uuid();
 
+const REMINDER_ID = uuid();
+
 const ESTABLISHMENT_ID = 8201;
 const ESTABLISHMENT_ID_2 = 8202;
 
 const nowish = (a, b, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
   assert.ok(Math.abs(diff) < n, `${a} should be within ${n} seconds of ${b}`);
+};
+
+const reminder = {
+  id: REMINDER_ID,
+  deadline: '2022-07-30',
+  modelType: 'establishment',
+  status: 'active'
 };
 
 describe('Role resolver', () => {
@@ -65,6 +75,12 @@ describe('Role resolver', () => {
           firstName: 'Yvette',
           lastName: 'Fielding',
           email: 'yf@example.com'
+        },
+        {
+          id: PROFILE_ID_4,
+          firstName: 'Steve',
+          lastName: 'Oxford',
+          email: 'so@example.com'
         }
       ]))
       .then(() => this.models.Role.query().insert([
@@ -369,6 +385,97 @@ describe('Role resolver', () => {
           assert.ok(roles.length === 1);
           assert.ok(roles[0].type === 'nprc');
           assert.ok(roles[0].profileId === PROFILE_ID_2);
+        });
+    });
+  });
+
+  describe('Updating conditions', () => {
+    it('adds the establishment condition when included', () => {
+      const opts = {
+        action: 'create',
+        data: {
+          conditions: 'Test condition',
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID_4,
+          type: 'nvs'
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.role(opts))
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.ok(establishment);
+          assert.ok(establishment.conditions === 'Test condition');
+          nowish(establishment.updatedAt, new Date().toISOString());
+        });
+    });
+
+    it('adds the condition reminder when included', () => {
+      const opts = {
+        action: 'replace',
+        data: {
+          conditions: 'Test condition',
+          reminder: JSON.stringify(reminder),
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID_4,
+          type: 'pelh',
+          replaceRoles: ['pelh', 'nprc']
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.role(opts))
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.ok(establishment.conditions === 'Test condition');
+        })
+        .then(() => this.models.Reminder.query().findById(REMINDER_ID))
+        .then(reminder => {
+          assert.ok(reminder);
+          nowish(reminder.updatedAt, new Date().toISOString());
+        });
+    });
+
+    it('removes the condition when it is blank (deleted)', () => {
+      const opts = {
+        action: 'replace',
+        data: {
+          conditions: '',
+          establishmentId: ESTABLISHMENT_ID,
+          profileId: PROFILE_ID_4,
+          type: 'nprc',
+          replaceRoles: ['nprc', 'pelh']
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.role(opts))
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.ok(establishment.conditions === null);
+          nowish(establishment.updatedAt, new Date().toISOString());
+        });
+    });
+
+    it('removes the reminder when it has the deleted flag', () => {
+      const opts = {
+        action: 'delete',
+        id: NACWO_ROLE_ID_2,
+        data: {
+          conditions: 'Test condition',
+          reminder: JSON.stringify({
+            id: REMINDER_ID,
+            deadline: '2022-07-30',
+            modelType: 'establishment',
+            status: 'active',
+            deleted: true
+          }),
+          establishmentId: ESTABLISHMENT_ID
+        }
+      };
+      return Promise.resolve()
+        .then(() => this.role(opts))
+        .then(() => this.models.Reminder.query().findById(REMINDER_ID))
+        .then(reminder => {
+          assert.ok(reminder === undefined);
         });
     });
   });
