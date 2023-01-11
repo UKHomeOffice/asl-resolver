@@ -435,11 +435,10 @@ describe('Role resolver', () => {
         });
     });
 
-    it('removes the condition when it is blank (deleted)', () => {
+    it('removes the condition when it is not on the payload (deleted)', () => {
       const opts = {
         action: 'replace',
         data: {
-          conditions: '',
           establishmentId: ESTABLISHMENT_ID,
           profileId: PROFILE_ID_4,
           type: 'nprc',

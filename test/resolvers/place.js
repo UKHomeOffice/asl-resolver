@@ -318,12 +318,11 @@ describe('Place resolver', () => {
           });
       });
 
-      it('removes the condition when it is blank (deleted)', () => {
+      it('removes the condition when it is not on the payload (deleted)', () => {
         const opts = {
           action: 'update',
           id: PLACE_ID3,
           data: {
-            conditions: '',
             establishmentId: ESTABLISHMENT_ID
           }
         };
