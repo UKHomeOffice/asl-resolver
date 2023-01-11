@@ -388,13 +388,11 @@ describe('Establishment resolver', () => {
           });
       });
 
-      it('removes the condition when it is blank (deleted)', () => {
+      it('removes the condition when it is not on the payload (deleted)', () => {
         const opts = {
           action: 'update',
           id: 8201,
-          data: {
-            conditions: ''
-          }
+          data: {}
         };
         return Promise.resolve()
           .then(() => this.establishment(opts))
