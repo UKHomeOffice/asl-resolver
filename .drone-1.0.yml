@@ -50,6 +50,7 @@ steps:
     pull: always
     environment:
       IMAGE_NAME: asl-resolver
+      WHITELIST_FILE: cve-exceptions.txt
 
   - name: docker push
     image: docker:dind
