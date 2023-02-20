@@ -2,7 +2,7 @@ const assert = require('assert');
 const moment = require('moment');
 const { establishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const {v4: uuid} = require('uuid');
+const { v4: uuid } = require('uuid');
 
 const nowish = (a, b, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
@@ -10,12 +10,51 @@ const nowish = (a, b, n = 3) => {
 };
 
 const REMINDER_ID = uuid();
+const PROFILE_ID_1 = uuid();
+const PROFILE_ID_2 = uuid();
 
 const reminder = {
   id: REMINDER_ID,
   deadline: '2022-07-30',
   modelType: 'establishment',
   status: 'active'
+};
+
+const anEstablishment = ({
+  id = 8201,
+  name = 'University of Croydon',
+  updatedAt = '2019-01-01T10:38:43.666Z',
+  corporateStatus = 'non-profit',
+  legalName = undefined,
+  legalPhone = undefined,
+  legalEmail = undefined
+}) => {
+  return {
+    id,
+    name,
+    updatedAt,
+    corporateStatus,
+    legalName,
+    legalPhone,
+    legalEmail
+  };
+};
+
+const aProfile = (id) => {
+  return {
+    id: id,
+    firstName: 'Profile',
+    lastName: `${id}`,
+    email: `profile_${id}@example.com`
+  };
+};
+
+const aRole = ({ establishmentId = 8201, profileId, type }) => {
+  return {
+    establishmentId,
+    profileId,
+    type
+  };
 };
 
 describe('Establishment resolver', () => {
@@ -275,7 +314,10 @@ describe('Establishment resolver', () => {
             .then(reminders => {
               assert.deepEqual(reminders.length, 0, 'there should be no reminders returned in the standard query');
             })
-            .then(() => this.models.Reminder.queryWithDeleted().where({ modelType: 'establishment', establishmentId: 101 }))
+            .then(() => this.models.Reminder.queryWithDeleted().where({
+              modelType: 'establishment',
+              establishmentId: 101
+            }))
             .then(reminders => {
               assert.deepEqual(reminders.length, 1, 'there should be a single deleted reminder');
               assert.ok(reminders[0].deleted, 'the deleted column should be set');
@@ -331,6 +373,210 @@ describe('Establishment resolver', () => {
         .then(() => this.models.Establishment.query().findById(101))
         .then(establishment => {
           assert.equal(establishment.updatedAt, '2018-01-01T12:00:00.000Z');
+        });
+    });
+  });
+
+  describe('Update corporate status', () => {
+    it('Replaces pelh when switching from non-profit to corporate', () => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          anEstablishment({ corporateStatus: 'non-profit' })
+        ]))
+        .then(() => this.models.Profile.query().insert([
+          aProfile(PROFILE_ID_1),
+          aProfile(PROFILE_ID_2)
+        ]))
+        .then(() => this.models.Role.query().insert([
+          aRole({ profileId: PROFILE_ID_1, type: 'pelh' })
+        ]))
+        .then(() => {
+          return this.establishment({
+            id: 8201,
+            action: 'update',
+            data: {
+              corporateStatus: 'corporate',
+              nprc: PROFILE_ID_2
+            }
+          });
+        })
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.equal(establishment.corporateStatus, 'corporate');
+          nowish(establishment.updatedAt, new Date().toISOString());
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'nprc' }))
+        .then(role => {
+          assert.equal(role[0].profileId, PROFILE_ID_2);
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'pelh' }))
+        .then((role) => {
+          assert.equal(role.length, 0);
+        });
+    });
+
+    it('Replaces nprc and removes legal person details when switching from corporate to non-profit', () => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          anEstablishment({ corporateStatus: 'corporate', legalName: 'John Responsible', legalEmail: 'john@responsible.com', legalPhone: '01234 123456' })
+        ]))
+        .then(() => this.models.Profile.query().insert([
+          aProfile(PROFILE_ID_1),
+          aProfile(PROFILE_ID_2)
+        ]))
+        .then(() => this.models.Role.query().insert([
+          aRole({ profileId: PROFILE_ID_1, type: 'nprc' })
+        ]))
+        .then(() => {
+          return this.establishment({
+            id: 8201,
+            action: 'update',
+            data: {
+              corporateStatus: 'non-profit',
+              pelh: PROFILE_ID_2
+            }
+          });
+        })
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.equal(establishment.corporateStatus, 'non-profit');
+          assert.equal(establishment.legalName, null);
+          assert.equal(establishment.legalPhone, null);
+          assert.equal(establishment.legalEmail, null);
+          nowish(establishment.updatedAt, new Date().toISOString());
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'pelh' }))
+        .then(role => {
+          assert.equal(role[0].profileId, PROFILE_ID_2);
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'nprc' }))
+        .then((role) => {
+          assert.equal(role.length, 0);
+        });
+    });
+
+    it('Replaces nprc and legal person details  when changed', () => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          anEstablishment({ corporateStatus: 'corporate', legalName: 'John Responsible', legalEmail: 'john@responsible.com', legalPhone: '01234 123456' })
+        ]))
+        .then(() => this.models.Profile.query().insert([
+          aProfile(PROFILE_ID_1),
+          aProfile(PROFILE_ID_2)
+        ]))
+        .then(() => this.models.Role.query().insert([
+          aRole({ profileId: PROFILE_ID_1, type: 'nprc' })
+        ]))
+        .then(() => {
+          return this.establishment({
+            id: 8201,
+            action: 'update',
+            data: {
+              corporateStatus: 'corporate',
+              nprc: PROFILE_ID_2,
+              legalName: 'Dave Smith',
+              legalEmail: 'dave@smith.com',
+              legalPhone: '98765 987654'
+            }
+          });
+        })
+        .then(() => this.models.Establishment.query().findById(8201))
+        .then(establishment => {
+          assert.equal(establishment.corporateStatus, 'corporate');
+          assert.equal(establishment.legalName, 'Dave Smith');
+          assert.equal(establishment.legalEmail, 'dave@smith.com');
+          assert.equal(establishment.legalPhone, '98765 987654');
+          nowish(establishment.updatedAt, new Date().toISOString());
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'nprc' }))
+        .then(roles => {
+          assert.equal(roles.length, 1);
+          assert.equal(roles[0].profileId, PROFILE_ID_2);
+        });
+    });
+
+    it('Replaces pelh when changed', () => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          anEstablishment({ corporateStatus: 'non-profit' })
+        ]))
+        .then(() => this.models.Profile.query().insert([
+          aProfile(PROFILE_ID_1),
+          aProfile(PROFILE_ID_2)
+        ]))
+        .then(() => this.models.Role.query().insert([
+          aRole({ profileId: PROFILE_ID_1, type: 'pelh' })
+        ]))
+        .then(() => {
+          return this.establishment({
+            id: 8201,
+            action: 'update',
+            data: {
+              corporateStatus: 'non-profit',
+              pelh: PROFILE_ID_2
+            }
+          });
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'pelh' }))
+        .then(roles => {
+          assert.equal(roles.length, 1);
+          assert.equal(roles[0].profileId, PROFILE_ID_2);
+        });
+    });
+
+    it('Does not replace nprc when nprc same as existing', () => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          anEstablishment({ corporateStatus: 'corporate' })
+        ]))
+        .then(() => this.models.Profile.query().insert([
+          aProfile(PROFILE_ID_1)
+        ]))
+        .then(() => this.models.Role.query().insert([
+          aRole({ profileId: PROFILE_ID_1, type: 'nprc' })
+        ]))
+        .then(() => {
+          return this.establishment({
+            id: 8201,
+            action: 'update',
+            data: {
+              corporateStatus: 'corporate',
+              nprc: PROFILE_ID_1
+            }
+          });
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'nprc' }))
+        .then(roles => {
+          assert.equal(roles.length, 1);
+          assert.equal(roles[0].profileId, PROFILE_ID_1);
+        });
+    });
+
+    it('Does not replace pelh when pelh same as existing', () => {
+      return Promise.resolve()
+        .then(() => this.models.Establishment.query().insert([
+          anEstablishment({ corporateStatus: 'non-profit' })
+        ]))
+        .then(() => this.models.Profile.query().insert([
+          aProfile(PROFILE_ID_1)
+        ]))
+        .then(() => this.models.Role.query().insert([
+          aRole({ profileId: PROFILE_ID_1, type: 'pelh' })
+        ]))
+        .then(() => {
+          return this.establishment({
+            id: 8201,
+            action: 'update',
+            data: {
+              corporateStatus: 'non-profit',
+              pelh: PROFILE_ID_1
+            }
+          });
+        })
+        .then(() => this.models.Role.query().where({ establishmentId: 8201, type: 'pelh' }))
+        .then(roles => {
+          assert.equal(roles.length, 1);
+          assert.equal(roles[0].profileId, PROFILE_ID_1);
         });
     });
   });
