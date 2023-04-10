@@ -28,7 +28,7 @@
     "@asl/constants": "^1.2.1",
     "@asl/schema": "^10.16.4",
     "@asl/service": "^9.1.5",
-    "aws-sdk": "^2.814.0",
+    "aws-sdk": "^2.1354.0",
     "hot-shots": "^6.8.2",
     "jsondiffpatch": "^0.4.1",
     "jsonwebtoken": "^9.0.0",
