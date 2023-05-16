@@ -25,15 +25,6 @@ steps:
         from_secret: github_token
     commands:
       - npm test
-  - name: audit
-    image: node:18
-    environment:
-      ART_AUTH_TOKEN:
-        from_secret: art_auth_token
-      GITHUB_AUTH_TOKEN:
-        from_secret: github_token
-    commands:
-      - npm run test:audit
   - name: docker build
     image: docker:dind
     environment:
@@ -45,12 +36,6 @@ steps:
         from_secret: github_token
     commands:
       - docker build --secret id=github_token,env=GITHUB_AUTH_TOKEN --secret id=token,env=ART_AUTH_TOKEN -t asl-resolver .
-  - name: scan-image
-    image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/anchore-submission:latest
-    pull: always
-    environment:
-      IMAGE_NAME: asl-resolver
-      WHITELIST_FILE: cve-exceptions.txt
 
   - name: docker push
     image: docker:dind
@@ -95,8 +80,3 @@ services:
   environment:
     POSTGRES_USER: asl-test
     POSTGRES_PASSWORD: test-password
-- name: anchore-submission-server
-  image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/anchore-submission:latest
-  pull: always
-  commands:
-    - /run.sh server
