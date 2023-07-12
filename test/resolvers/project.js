@@ -1080,7 +1080,7 @@ describe('Project resolver', () => {
       const opts = {
         action: 'grant',
         id: projectId,
-        data: {
+        meta: {
           hbaToken: 'HBA_TOKEN'
         }
       };
@@ -1103,7 +1103,7 @@ describe('Project resolver', () => {
         .then((version) => {
           assert.equal(
             version.hbaToken,
-            opts.data.hbaToken,
+            opts.meta.hbaToken,
             'Expected token to be persisted'
           );
         });
