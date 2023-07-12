@@ -6,3 +6,4 @@ plugins:
 
 rules:
   undocumented-env/no-undocumented: 2
+  indent: 0
