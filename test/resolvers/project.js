@@ -1081,7 +1081,8 @@ describe('Project resolver', () => {
         action: 'grant',
         id: projectId,
         meta: {
-          hbaToken: 'HBA_TOKEN'
+          hbaToken: 'HBA_TOKEN',
+          hbaFilename: 'foo.docx'
         }
       };
       const version = {
@@ -1105,6 +1106,11 @@ describe('Project resolver', () => {
             version.hbaToken,
             opts.meta.hbaToken,
             'Expected token to be persisted'
+          );
+          assert.equal(
+            version.hbaFilename,
+            opts.meta.hbaFilename,
+            'Expected hba filename to be persisted'
           );
         });
     });
@@ -2372,6 +2378,7 @@ describe('Project resolver', () => {
             projectId,
             status: 'submitted',
             hbaToken: 'HBA_TOKEN',
+            hbaFilename: 'foo.docx',
             data: {
               foo: 'bar',
               transferToEstablishment: 8203
@@ -2423,6 +2430,11 @@ describe('Project resolver', () => {
           version.hbaToken,
           'HBA_TOKEN',
           'Expected hbaToken to be transferred to the new version'
+        );
+        assert.equal(
+          version.hbaFilename,
+          'foo.docx',
+          'Expected hba filname to be transferred to the new version'
         );
       });
 
