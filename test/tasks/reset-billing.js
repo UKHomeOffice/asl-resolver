@@ -13,9 +13,9 @@ const UNI_WITH_BILLING_1 = {
     contactAddress: '123 A Street,\nLondon,\nSW1A 1AA',
     purchaseOrder: '123-456789-0',
     otherInformation: 'Other billing info',
-    declaredCurrent: true,
+    declaredCurrent: true
   }
-}
+};
 
 const UNI_WITH_BILLING_2 = {
   id: 8202,
@@ -26,15 +26,15 @@ const UNI_WITH_BILLING_2 = {
     contactEmail: 'billing@example.com',
     contactAddress: '123 Another Street,\nLondon,\nSW1A 1AA',
     purchaseOrder: '890-456789-0',
-    otherInformation: '',
+    otherInformation: ''
   }
-}
+};
 
 const UNI_WITHOUT_BILLING = {
   id: 8203,
   name: 'College of Croydon',
   billing: null
-}
+};
 
 function assertAnnualFieldsRemoved(actual, original) {
   assert.equal(actual.billing.contactName, original.billing.contactName);
@@ -65,8 +65,8 @@ describe('Annual reset of billing', () => {
 
     await resetBilling({ models: this.models, logger: Logger({logLevel: 'silent'}) });
 
-    const [withBilling1] = await this.models.Establishment.query().where('id', UNI_WITH_BILLING_1.id)
-    const [withBilling2] = await this.models.Establishment.query().where('id', UNI_WITH_BILLING_2.id)
+    const [withBilling1] = await this.models.Establishment.query().where('id', UNI_WITH_BILLING_1.id);
+    const [withBilling2] = await this.models.Establishment.query().where('id', UNI_WITH_BILLING_2.id);
     const [withoutBilling] = await this.models.Establishment.query().where('id', UNI_WITHOUT_BILLING.id);
 
     console.log(withBilling1);
@@ -74,5 +74,5 @@ describe('Annual reset of billing', () => {
     assertAnnualFieldsRemoved(withBilling1, UNI_WITH_BILLING_1);
     assertAnnualFieldsRemoved(withBilling2, UNI_WITH_BILLING_2);
     assert.equal(withoutBilling.billing, null);
-  })
-})
+  });
+});
