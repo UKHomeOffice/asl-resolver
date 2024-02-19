@@ -3494,8 +3494,8 @@ describe('Project resolver', () => {
     it('can create a project stub for a legacy licence', () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
-      const issueDate = new Date('2018-08-15').toISOString();
-      const expectedExpiryDate = new Date('2023-08-15').toISOString();
+      const issueDate = new Date('2023-08-15').toISOString();
+      const expectedExpiryDate = new Date('2028-08-15').toISOString();
 
       const duration = {
         years: 5,
