@@ -11,6 +11,7 @@ const UNI_WITH_BILLING_1 = {
     contactNumber: '01234 567890',
     contactEmail: 'billing@example.org',
     contactAddress: '123 A Street,\nLondon,\nSW1A 1AA',
+    hasPurchaseOrder: 'yes',
     purchaseOrder: '123-456789-0',
     otherInformation: 'Other billing info',
     declaredCurrent: true
@@ -25,7 +26,8 @@ const UNI_WITH_BILLING_2 = {
     contactNumber: '01234 567890',
     contactEmail: 'billing@example.com',
     contactAddress: '123 Another Street,\nLondon,\nSW1A 1AA',
-    purchaseOrder: '890-456789-0',
+    hasPurchaseOrder: 'no',
+    alternativePaymentMethod: 'Payment sent on receipt of invoice by email.',
     otherInformation: ''
   }
 };
@@ -42,6 +44,8 @@ function assertAnnualFieldsRemoved(actual, original) {
   assert.equal(actual.billing.contactEmail, original.billing.contactEmail);
   assert.equal(actual.billing.contactAddress, original.billing.contactAddress);
   assert.equal(actual.billing.purchaseOrder, undefined);
+  assert.equal(actual.billing.hasPurchaseOrder, undefined);
+  assert.equal(actual.billing.alternativePaymentMethod, undefined);
   assert.equal(actual.billing.otherInformation, undefined);
   assert.equal(actual.billing.declaredCurrent, undefined);
 
