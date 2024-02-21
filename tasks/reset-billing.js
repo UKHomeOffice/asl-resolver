@@ -1,6 +1,6 @@
 function deleteAnnuallyUpdatedFields(Model, knex) {
   return Model.query()
-    .patch({ billing: knex.raw("billing - '{purchaseOrder,otherInformation,declaredCurrent}'::text[]") })
+    .patch({ billing: knex.raw("billing - '{hasPurchaseOrder,purchaseOrder,alternativePaymentMethod,otherInformation,declaredCurrent}'::text[]") })
     .whereNotNull('billing')
     .returning('id');
 }
@@ -8,7 +8,7 @@ function deleteAnnuallyUpdatedFields(Model, knex) {
 const resetBilling = async ({ models, logger }) => {
   const { Establishment, knex } = models;
 
-  logger.info(`Clearing purchaseOrder, otherInformation, declaredCurrent from establishments' billing information`);
+  logger.info(`Clearing payment information fields, otherInformation, and declaredCurrent from establishments' billing information`);
 
   const ids = await deleteAnnuallyUpdatedFields(Establishment, knex);
 
