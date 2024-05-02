@@ -14,6 +14,8 @@ RUN --mount=type=secret,id=token \
     GITHUB_AUTH_TOKEN=`cat /run/secrets/github_token` \
     npm ci --production --no-optional --ignore-scripts
 
+RUN npm ls tar
+
 COPY . /app
 
 RUN rm /app/.npmrc
