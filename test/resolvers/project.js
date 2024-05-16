@@ -1791,7 +1791,7 @@ describe('Project resolver', () => {
       return Promise.resolve()
         .then(() => this.models.ProjectVersion.query().insert(versions))
         .then(() => this.models.Project.query().findById(projectId2))
-        .then((previous) => {
+        .then(() => {
           return Promise.resolve()
             .then(() => this.project(opts))
             .then(() => this.models.Project.query().findById(projectId2))
@@ -1827,7 +1827,7 @@ describe('Project resolver', () => {
       return Promise.resolve()
         .then(() => this.models.ProjectVersion.query().insert(versions))
         .then(() => this.models.Project.query().findById(projectId2))
-        .then((previous) => {
+        .then(() => {
           return Promise.resolve()
             .then(() => this.project(opts))
             .then(() => this.models.Project.query().findById(projectId2))
@@ -2371,6 +2371,10 @@ describe('Project resolver', () => {
           id: projectId,
           data: {
             establishmentId: 8203
+          },
+          meta: {
+            hbaToken: 'NEW_HBA_TOKEN',
+            hbaFilename: 'bar.docx'
           }
         };
         return Promise.resolve().then(() =>
@@ -2417,7 +2421,7 @@ describe('Project resolver', () => {
         assert.equal(version.data.transferToEstablishment, undefined);
       });
 
-      it('creates a clone of the version under the new project, including hba', async () => {
+      it('creates a clone of the version under the new project, replacing hba', async () => {
         await this.project(this.input);
 
         const { id } = await this.models.Project.query().findOne({
@@ -2428,13 +2432,13 @@ describe('Project resolver', () => {
         });
         assert.equal(
           version.hbaToken,
-          'HBA_TOKEN',
-          'Expected hbaToken to be transferred to the new version'
+          'NEW_HBA_TOKEN',
+          'Expected hbaToken to be replaced in the new version'
         );
         assert.equal(
           version.hbaFilename,
-          'foo.docx',
-          'Expected hba filname to be transferred to the new version'
+          'bar.docx',
+          'Expected hba filename to be replaced in the new version'
         );
       });
 
