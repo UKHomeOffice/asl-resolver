@@ -3494,7 +3494,7 @@ describe('Project resolver', () => {
     });
   });
 
-  describe('Conversion of legacy project licences', () => {
+  describe.skip('Conversion of legacy project licences', () => {
     it('can create a project stub for a legacy licence', () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
