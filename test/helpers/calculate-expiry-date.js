@@ -1,4 +1,3 @@
-/* eslint-disable no-only-tests/no-only-tests */
 const assert = require('assert');
 const moment = require('moment');
 const sinon = require('sinon');
@@ -18,7 +17,7 @@ describe('calculateExpiryDate', () => {
     });
 
     it('should expire license in 1 year after issue date', () => {
-        const result = calculateExpiryDate(moment('26-07-2014', 'DD-MM-YYYY').toISOString(), moment.duration(1, 'year'));
+        const result = calculateExpiryDate(new Date('2014-07-26').toISOString(), moment.duration(1, 'year'));
         assert.equal(result, '2015-07-25T23:59:59.999+01:00');
     });
 
