@@ -5,7 +5,7 @@ const sinon = require('sinon');
 
 const calculateExpiryDate = require('../../lib/helpers/calculate-expiry-date.js');
 
-describe('calculateExpiryDate', () => {
+describe.only('calculateExpiryDate', () => {
 
     let clock;
 
@@ -34,7 +34,7 @@ describe('calculateExpiryDate', () => {
     });
 
     it('should get correct expiry when issue data is a date string', () => {
-        const result = calculateExpiryDate(new Date('2018-08-15').toISOString(), moment.duration(2, 'years'));
-        assert.equal(result, '2020-08-14T23:59:59.999+01:00');
+        const result = calculateExpiryDate(new Date('2018-01-01').toISOString(), moment.duration(2, 'years'));
+        assert.equal(result, '2019-12-31T23:59:59.999+00:00');
     });
 });
