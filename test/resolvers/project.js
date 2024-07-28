@@ -3494,13 +3494,12 @@ describe('Project resolver', () => {
     });
   });
 
-  describe.skip('Conversion of legacy project licences', () => {
+  describe.only('Conversion of legacy project licences', () => {
     it('can create a project stub for a legacy licence', () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
-      const issueDate = new Date('2023-08-15').toISOString();
-      const expectedExpiryDate = new Date('2028-08-15').toISOString();
-
+      const issueDate = new Date('2020-12-20').toISOString();
+      const expectedExpiryDate = '2025-12-19T23:59:59.999Z';
       const duration = {
         years: 5,
         months: 0
@@ -3613,8 +3612,8 @@ describe('Project resolver', () => {
     it('expires the project stub if the expiry is in the past', () => {
       const title = 'Expired Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
-      const issueDate = new Date('2016-08-15').toISOString();
-      const expectedExpiryDate = new Date('2018-08-15').toISOString();
+      const issueDate = new Date('2021-02-17').toISOString();
+      const expectedExpiryDate = '2023-02-16T23:59:59.999Z';
 
       const duration = {
         years: 2,
@@ -3675,12 +3674,12 @@ describe('Project resolver', () => {
     it('can convert a project stub into a standard legacy licence', () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
-      const issueDate = new Date('2018-08-15 12:00:00').toISOString();
+      const issueDate = new Date('2018-05-15').toISOString();
       const initialExpiryDate = new Date('2023-08-15 12:00:00').toISOString();
       const draftDate = new Date('2020-02-28 12:00:00').toISOString();
 
       const conversionTitle = 'Digitised Paper Licence';
-      const expectedExpiryDate = new Date('2023-02-15 12:00:00').toISOString();
+      const expectedExpiryDate = '2022-11-14T23:59:59.999Z';
       const expectedRaDate = moment(expectedExpiryDate)
         .add(6, 'months')
         .toISOString();
