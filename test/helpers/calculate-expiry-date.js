@@ -31,8 +31,18 @@ describe('calculateExpiryDate', () => {
         assert.equal(result, '2024-12-31T23:59:59.999Z');
     });
 
+    it('should expire license in 1 month from given date', () => {
+        const result = calculateExpiryDate(new Date().toISOString(), { months: 1 });
+        assert.equal(result, '2024-01-31T23:59:59.999Z');
+    });
+
     it('should get correct expiry when issue data is a date string', () => {
         const result = calculateExpiryDate(new Date('2018-01-01').toISOString(), moment.duration(2, 'years'));
         assert.equal(result, '2019-12-31T23:59:59.999Z');
+    });
+
+    it('should get default expiry when issue data and duration are undefined', () => {
+        const result = calculateExpiryDate(undefined, undefined);
+        assert.equal(result, '2028-12-31T23:59:59.999Z');
     });
 });

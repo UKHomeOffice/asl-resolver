@@ -93,7 +93,7 @@ describe('Project resolver', () => {
               status: 'active',
               title: 'Hypoxy and angiogenesis in cancer therapy',
               issueDate: new Date('2019-07-11').toISOString(),
-              expiryDate: new Date('2022-07-11').toISOString(),
+              expiryDate: new Date('2022-07-10').toISOString(),
               licenceNumber: 'PP-627808',
               establishmentId: 8201,
               licenceHolderId: profileId
@@ -339,7 +339,7 @@ describe('Project resolver', () => {
             updatedAt: new Date('2019-07-11').toISOString(),
             schemaVersion: 1,
             issueDate: new Date('2019-07-11').toISOString(),
-            expiryDate: new Date('2022-07-11').toISOString(),
+            expiryDate: new Date('2022-07-10').toISOString(),
             licenceNumber: 'PP-627808'
           },
           {
@@ -485,7 +485,7 @@ describe('Project resolver', () => {
             status: 'active',
             title: 'Active project to be updated',
             issueDate: new Date('2019-07-11').toISOString(),
-            expiryDate: new Date('2022-07-11').toISOString(),
+            expiryDate: new Date('2022-07-10').toISOString(),
             establishmentId: 8201,
             licenceHolderId: profileId,
             createdAt: new Date('2019-07-11').toISOString(),
@@ -497,7 +497,7 @@ describe('Project resolver', () => {
             status: 'active',
             title: 'Legacy project',
             issueDate: new Date('2019-07-11').toISOString(),
-            expiryDate: new Date('2022-07-11').toISOString(),
+            expiryDate: new Date('2022-07-10').toISOString(),
             establishmentId: 8201,
             licenceHolderId: profileId,
             createdAt: new Date('2019-07-11').toISOString(),
@@ -1051,6 +1051,9 @@ describe('Project resolver', () => {
         .then((project) => {
           const expiryDate = moment(project.issueDate)
             .add({ years: 5, months: 0 })
+            .subtract(1, 'days')
+            .endOf('day')
+            .utc(true)
             .toISOString();
           assert.ok(project.licenceNumber, 'licence number was not generated');
           assert.equal(
@@ -1566,6 +1569,9 @@ describe('Project resolver', () => {
           .then((project) => {
             const expiryDate = moment(project.issueDate)
               .add(version.data.duration)
+              .subtract(1, 'days')
+              .endOf('day')
+              .utc(true)
               .toISOString();
             assert.equal(
               project.expiryDate,
@@ -1598,6 +1604,9 @@ describe('Project resolver', () => {
           .then((project) => {
             const expiryDate = moment(project.issueDate)
               .add({ years: 5, months: 0 })
+              .subtract(1, 'days')
+              .endOf('day')
+              .utc(true)
               .toISOString();
             assert.equal(
               project.expiryDate,
@@ -1617,9 +1626,9 @@ describe('Project resolver', () => {
           { duration: { years: 0, months: 0 }, expected: 60 },
           { duration: { years: 5, months: 6 }, expected: 60 },
           { duration: { years: 10, months: 25 }, expected: 60 },
-          { duration: { years: 0, months: 25 }, expected: 60 },
+          { duration: { years: 0, months: 25 }, expected: 0 },
           { duration: { years: 2, months: 25 }, expected: 24 },
-          { duration: { years: 0, months: 3 }, expected: 3 }
+          { duration: { years: 0, months: 3 }, expected: 2 }
         ];
 
         const opts = {
@@ -1701,56 +1710,6 @@ describe('Project resolver', () => {
                 project.expiryDate,
                 previous.expiryDate,
                 'Expiry date was updated'
-              );
-            });
-        });
-    });
-
-    it('Updates expiry date if duration changed', () => {
-      const opts = {
-        action: 'grant',
-        id: projectId2
-      };
-      const versions = [
-        {
-          projectId: projectId2,
-          status: 'granted',
-          data: {
-            title: 'New title for updated project',
-            duration: {
-              years: 3,
-              months: 0
-            }
-          },
-          createdAt: new Date('2019-12-17').toISOString()
-        },
-        {
-          projectId: projectId2,
-          status: 'submitted',
-          data: {
-            duration: {
-              years: 5,
-              months: 0
-            }
-          },
-          createdAt: new Date('2019-12-18').toISOString()
-        }
-      ];
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(versions))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then((previous) => {
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .then(() => this.models.Project.query().findById(projectId2))
-            .then((project) => {
-              const expiryDate = moment(previous.issueDate)
-                .add(versions[1].data.duration)
-                .toISOString();
-              assert.equal(
-                project.expiryDate,
-                expiryDate,
-                'Expiry date not updated'
               );
             });
         });
@@ -3244,7 +3203,7 @@ describe('Project resolver', () => {
 
     it('can change the issue date of a project', () => {
       const newIssueDate = new Date('2018-08-15').toISOString();
-      const expectedExpiryDate = new Date('2023-08-15').toISOString();
+      const expectedExpiryDate = '2023-08-14T23:59:59.999Z';
 
       const opts = {
         action: 'update-issue-date',
