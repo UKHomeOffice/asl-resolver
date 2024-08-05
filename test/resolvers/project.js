@@ -1618,16 +1618,16 @@ describe('Project resolver', () => {
 
       describe('validation', () => {
         const tests = [
-          { expected: 60 },
-          { duration: {}, expected: 60 },
-          { duration: { years: 5 }, expected: 60 },
-          { duration: { years: 5, months: null }, expected: 60 },
-          { duration: { years: null, months: null }, expected: 60 },
-          { duration: { years: 0, months: 0 }, expected: 60 },
-          { duration: { years: 5, months: 6 }, expected: 60 },
-          { duration: { years: 10, months: 25 }, expected: 60 },
+          { expected: 59 },
+          { duration: {}, expected: 59 },
+          { duration: { years: 5 }, expected: 59 },
+          { duration: { years: 5, months: null }, expected: 59 },
+          { duration: { years: null, months: null }, expected: 59 },
+          { duration: { years: 0, months: 0 }, expected: 59 },
+          { duration: { years: 5, months: 6 }, expected: 59 },
+          { duration: { years: 10, months: 25 }, expected: 59 },
           { duration: { years: 0, months: 25 }, expected: 0 },
-          { duration: { years: 2, months: 25 }, expected: 24 },
+          { duration: { years: 2, months: 25 }, expected: 23 },
           { duration: { years: 0, months: 3 }, expected: 2 }
         ];
 
