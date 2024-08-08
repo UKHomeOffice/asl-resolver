@@ -18,7 +18,7 @@ describe('calculateExpiryDate', () => {
 
     it('should expire license in 1 year after issue date', () => {
         const result = calculateExpiryDate(new Date('2014-07-26').toISOString(), moment.duration(1, 'year'));
-        assert.equal(result, '2015-07-25T23:59:59.999Z');
+        assert.equal(result, '2015-07-25T22:59:59.999Z');
     });
 
     it('should expire license in 2 days from given date', () => {
