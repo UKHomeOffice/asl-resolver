@@ -4,7 +4,7 @@ const sinon = require('sinon');
 
 const calculateExpiryDate = require('../../lib/helpers/calculate-expiry-date.js');
 
-describe.only('calculateExpiryDate', () => {
+describe('calculateExpiryDate', () => {
 
     let clock;
 
