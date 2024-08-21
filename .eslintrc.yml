@@ -1,5 +1,5 @@
 extends:
-  - lennym
+  - "@ukhomeoffice/asl"
 
 plugins:
   - eslint-plugin-undocumented-env
