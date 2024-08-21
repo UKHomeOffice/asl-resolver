@@ -42,10 +42,15 @@ steps:
     commands:
       - docker build --secret id=github_token,env=GITHUB_AUTH_TOKEN --secret id=token,env=ART_AUTH_TOKEN -t asl-resolver .
   - name: scan-image
+    pull: Always
     image: 340268328991.dkr.ecr.eu-west-2.amazonaws.com/acp/trivy/client:latest
-    pull: always
+    resources:
+      limits:
+        cpu: 1000
+        memory: 1024Mi
     environment:
       IMAGE_NAME: asl-resolver
+      ALLOW_CVE_LIST_FILE: cve-exceptions.txt
     when:
       event: push
   - name: docker push
