@@ -10,7 +10,7 @@
     "test:lint": "eslint .",
     "test:audit": "audit-ci --high --skip-dev --config .auditrc.json",
     "dev": "nodemon -r dotenv/config index.js",
-    "migrate": "knex migrate:latest --knexfile ./node_modules/@asl/schema/knexfile.js --env test",
+    "migrate": "knex migrate:latest --knexfile ../../node_modules/@asl/schema/knexfile.js --env test",
     "task": "node ./tasks/run-task"
   },
   "repository": {

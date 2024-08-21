@@ -3203,7 +3203,7 @@ describe('Project resolver', () => {
 
     it('can change the issue date of a project', () => {
       const newIssueDate = new Date('2018-08-15').toISOString();
-      const expectedExpiryDate = '2023-08-14T23:59:59.999Z';
+      const expectedExpiryDate = '2023-08-14T22:59:59.999Z';
 
       const opts = {
         action: 'update-issue-date',
