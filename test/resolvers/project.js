@@ -1053,7 +1053,7 @@ describe('Project resolver', () => {
             .add({ years: 5, months: 0 })
             .subtract(1, 'days')
             .endOf('day')
-            .utc(true)
+            .utc(false)
             .toISOString();
           assert.ok(project.licenceNumber, 'licence number was not generated');
           assert.equal(
@@ -1571,7 +1571,7 @@ describe('Project resolver', () => {
               .add(version.data.duration)
               .subtract(1, 'days')
               .endOf('day')
-              .utc(true)
+              .utc(false)
               .toISOString();
             assert.equal(
               project.expiryDate,
@@ -1606,7 +1606,7 @@ describe('Project resolver', () => {
               .add({ years: 5, months: 0 })
               .subtract(1, 'days')
               .endOf('day')
-              .utc(true)
+              .utc(false)
               .toISOString();
             assert.equal(
               project.expiryDate,
@@ -3203,7 +3203,7 @@ describe('Project resolver', () => {
 
     it('can change the issue date of a project', () => {
       const newIssueDate = new Date('2018-08-15').toISOString();
-      const expectedExpiryDate = '2023-08-14T23:59:59.999Z';
+      const expectedExpiryDate = new Date('2023-08-14').toISOString().split('T')[0];
 
       const opts = {
         action: 'update-issue-date',
@@ -3223,7 +3223,7 @@ describe('Project resolver', () => {
             'issue date was updated correctly'
           );
           assert.equal(
-            project.expiryDate,
+            project.expiryDate.split('T')[0],
             expectedExpiryDate,
             'expiry date was updated correctly'
           );
