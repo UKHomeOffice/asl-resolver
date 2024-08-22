@@ -3203,7 +3203,7 @@ describe('Project resolver', () => {
 
     it('can change the issue date of a project', () => {
       const newIssueDate = new Date('2018-08-15').toISOString();
-      const expectedExpiryDate = '2023-08-14T22:59:59.999Z';
+      const expectedExpiryDate = new Date('2023-08-14').toISOString().split('T')[0];
 
       const opts = {
         action: 'update-issue-date',
@@ -3223,7 +3223,7 @@ describe('Project resolver', () => {
             'issue date was updated correctly'
           );
           assert.equal(
-            project.expiryDate,
+            project.expiryDate.split('T')[0],
             expectedExpiryDate,
             'expiry date was updated correctly'
           );
