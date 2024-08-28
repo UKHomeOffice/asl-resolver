@@ -1053,7 +1053,8 @@ describe('Project resolver', () => {
             .add({ years: 5, months: 0 })
             .subtract(1, 'days')
             .endOf('day')
-            .utc(false)
+            .utc(true)
+            .subtract(1, 'hour')
             .toISOString();
           assert.ok(project.licenceNumber, 'licence number was not generated');
           assert.equal(
@@ -1571,7 +1572,8 @@ describe('Project resolver', () => {
               .add(version.data.duration)
               .subtract(1, 'days')
               .endOf('day')
-              .utc(false)
+              .utc(true)
+              .subtract(1, 'hour')
               .toISOString();
             assert.equal(
               project.expiryDate,
@@ -1606,7 +1608,8 @@ describe('Project resolver', () => {
               .add({ years: 5, months: 0 })
               .subtract(1, 'days')
               .endOf('day')
-              .utc(false)
+              .utc(true)
+              .subtract(1, 'hour')
               .toISOString();
             assert.equal(
               project.expiryDate,
@@ -3458,7 +3461,7 @@ describe('Project resolver', () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
       const issueDate = new Date('2020-12-20').toISOString();
-      const expectedExpiryDate = '2025-12-19T23:59:59.999Z';
+      const expectedExpiryDate = '2025-12-19T22:59:59.999Z';
       const duration = {
         years: 5,
         months: 0
@@ -3572,7 +3575,7 @@ describe('Project resolver', () => {
       const title = 'Expired Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
       const issueDate = new Date('2021-02-17').toISOString();
-      const expectedExpiryDate = '2023-02-16T23:59:59.999Z';
+      const expectedExpiryDate = '2023-02-16T22:59:59.999Z';
 
       const duration = {
         years: 2,
@@ -3638,7 +3641,7 @@ describe('Project resolver', () => {
       const draftDate = new Date('2020-02-28 12:00:00').toISOString();
 
       const conversionTitle = 'Digitised Paper Licence';
-      const expectedExpiryDate = '2022-11-14T23:59:59.999Z';
+      const expectedExpiryDate = '2022-11-14T22:59:59.999Z';
       const expectedRaDate = moment(expectedExpiryDate)
         .add(6, 'months')
         .toISOString();
