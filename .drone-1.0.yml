@@ -46,6 +46,7 @@ steps:
     pull: always
     environment:
       IMAGE_NAME: asl-resolver
+      ALLOW_CVE_LIST_FILE: cve-exceptions.txt
     when:
       event: push
   - name: docker push
