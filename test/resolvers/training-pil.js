@@ -3,6 +3,7 @@ const assert = require('assert');
 const { trainingPil } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 const uuid = require('uuid/v4');
+const { qualificationLevelAndSubject, applicantLearningUse, jobTitleOrQualification, fieldOfExpertise, applicantTrainingUseAtWork } = require('../../../asl-pages/pages/pil/unscoped/courses/participants/add/schema');
 
 function isNowish(date) {
   return moment(date).isBetween(moment().subtract(5, 'seconds'), moment().add(5, 'seconds'));
@@ -59,7 +60,14 @@ const trainingPils = [
   {
     id: ids.trainingPil,
     trainingCourseId: ids.trainingCourse,
-    profileId: ids.profile.existing
+    profileId: ids.profile.existing,
+    organisation: 'university of croydon',
+    qualificationLevelAndSubject: 'bsc',
+    applicantLearningUse: 'to learn a new surgical procedure',
+    jobTitleOrQualification: 'researcher',
+    fieldOfExpertise: 'surgery',
+    applicantTrainingUseAtWork: 'yes',
+    otherNotes: 'some notes'
   }
 ];
 
