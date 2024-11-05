@@ -3,7 +3,6 @@ const assert = require('assert');
 const { trainingPil } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 const uuid = require('uuid/v4');
-const { qualificationLevelAndSubject, applicantLearningUse, jobTitleOrQualification, fieldOfExpertise, applicantTrainingUseAtWork } = require('../../../asl-pages/pages/pil/unscoped/courses/participants/add/schema');
 
 function isNowish(date) {
   return moment(date).isBetween(moment().subtract(5, 'seconds'), moment().add(5, 'seconds'));
