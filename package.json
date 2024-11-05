@@ -1,6 +1,6 @@
 {
   "name": "asl-resolver",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "Workflow API for processing change requests",
   "main": "index.js",
   "scripts": {
