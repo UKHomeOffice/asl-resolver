@@ -59,7 +59,14 @@ const trainingPils = [
   {
     id: ids.trainingPil,
     trainingCourseId: ids.trainingCourse,
-    profileId: ids.profile.existing
+    profileId: ids.profile.existing,
+    organisation: 'university of croydon',
+    qualificationLevelAndSubject: 'bsc',
+    applicantLearningUse: 'to learn a new surgical procedure',
+    jobTitleOrQualification: 'researcher',
+    fieldOfExpertise: 'surgery',
+    applicantTrainingUseAtWork: 'yes',
+    otherNotes: 'some notes'
   }
 ];
 
