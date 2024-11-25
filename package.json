@@ -1,6 +1,6 @@
 {
   "name": "asl-resolver",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Workflow API for processing change requests",
   "main": "index.js",
   "scripts": {
@@ -26,8 +26,8 @@
   "homepage": "https://github.com/UKHomeOffice/asl-resolver#readme",
   "dependencies": {
     "@asl/schema": "^10.18.7",
-    "@asl/service": "^10.4.1",
-    "@ukhomeoffice/asl-constants": "^2.1.7",
+    "@asl/service": "^10.5.3",
+    "@ukhomeoffice/asl-constants": "^2.1.8",
     "aws-sdk": "2.1169.0",
     "hot-shots": "^6.8.2",
     "jsondiffpatch": "^0.4.1",
