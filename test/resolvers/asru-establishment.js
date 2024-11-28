@@ -1,13 +1,13 @@
 const assert = require('assert');
-const uuid = require('uuid/v4');
+const uuid = require('uuid');
 const { asruEstablishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 
 const PROFILE = uuid();
 
 describe('ASRU-Establishment resolver', () => {
-  before(() => {
-    this.models = db.init();
+  before(async () => {
+    this.models = await db.init();
     this.asruEstablishment = asruEstablishment({ models: this.models });
   });
 
