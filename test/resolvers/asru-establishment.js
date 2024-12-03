@@ -18,7 +18,6 @@ describe('ASRU-Establishment resolver', () => {
   });
 
   beforeEach(async () => {
-    transaction = await knexInstance.transaction();
     await db.clean(models);
 
     try {
@@ -36,10 +35,6 @@ describe('ASRU-Establishment resolver', () => {
         id: 100,
         name: 'Test University'
       });
-
-      await models.AsruEstablishment.query(knexInstance)
-        .insert({ establishmentId: 100,
-          profileId: PROFILE });
 
     } catch (error) {
       console.log(error);
@@ -60,6 +55,7 @@ describe('ASRU-Establishment resolver', () => {
 
   describe('Create', () => {
     it('can create an association', async () => {
+      transaction = await knexInstance.transaction();
       const opts = {
         action: 'create',
         data: {
@@ -77,7 +73,8 @@ describe('ASRU-Establishment resolver', () => {
       assert.equal(associations[0].profileId, PROFILE);
     });
 
-    it('does not create multiple associations for the same profile/establishment', () => {
+    it('does not create multiple associations for the same profile/establishment', async () => {
+      transaction = await knexInstance.transaction();
       const opts = {
         action: 'create',
         data: {
@@ -85,39 +82,39 @@ describe('ASRU-Establishment resolver', () => {
           profileId: PROFILE
         }
       };
-      return Promise.resolve()
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.models.AsruEstablishment.query())
-        .then(associations => {
-          assert.equal(associations.length, 1);
-          assert.equal(associations[0].establishmentId, 100);
-          assert.equal(associations[0].profileId, PROFILE);
-        });
+      await this.asruEstablishment(opts, transaction);
+      await this.asruEstablishment(opts, transaction);
+      await this.asruEstablishment(opts, transaction);
+      await this.asruEstablishment(opts, transaction);
+      await transaction.commit();
+
+      const associations = await models.AsruEstablishment.query(knexInstance);
+
+      assert.equal(associations.length, 1);
+      assert.equal(associations[0].establishmentId, 100);
+      assert.equal(associations[0].profileId, PROFILE);
     });
   });
 
   describe('Delete', () => {
-    it('can delete an association', () => {
-      return this.models.AsruEstablishment.query(knexInstance).insert({ establishmentId: 100, profileId: PROFILE })
-        .then(() => {
-          const opts = {
-            action: 'delete',
-            data: {
-              establishmentId: 100,
-              profileId: PROFILE
-            }
-          };
+    it('can delete an association', async () => {
+      transaction = await knexInstance.transaction();
+      await models.AsruEstablishment.query(knexInstance).insert({ establishmentId: 100, profileId: PROFILE });
 
-          return Promise.resolve()
-            .then(() => this.asruEstablishment(opts))
-            .then(() => this.models.AsruEstablishment.query(knexInstance))
-            .then(associations => {
-              assert.equal(associations.length, 0);
-            });
-        });
+      const opts = {
+        action: 'delete',
+        data: {
+          establishmentId: 100,
+          profileId: PROFILE
+        }
+      };
+
+      await this.asruEstablishment(opts, transaction);
+      await transaction.commit();
+
+      const associations = await models.AsruEstablishment.query(knexInstance);
+
+      assert.equal(associations.length, 0);
     });
   });
 
