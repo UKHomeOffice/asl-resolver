@@ -47,8 +47,8 @@ describe('ASRU-Establishment resolver', () => {
   });
 
   after(async () => {
-    await knexInstance.destroy();
     await db.clean(models);
+    await knexInstance.destroy();
   });
 
   it('rejects with an error if action is unknown', async () => {
@@ -68,6 +68,7 @@ describe('ASRU-Establishment resolver', () => {
         }
       };
       await this.asruEstablishment(opts, transaction);
+      await transaction.commit();
 
       const associations = await models.AsruEstablishment.query(knexInstance);
 
