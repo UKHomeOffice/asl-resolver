@@ -13,7 +13,6 @@ describe('ASRU-Establishment resolver', () => {
   before(async () => {
     models = await db.init();
     knexInstance = await db.getKnex();
-    this.models = models;
     this.asruEstablishment = asruEstablishment({ models });
   });
 
