@@ -19,6 +19,7 @@ describe('Certificate resolver', () => {
 
   beforeEach(async () => {
     await db.clean(models);
+
     try {
       await models.Profile.query(knexInstance).insert({
         id: profileId,
@@ -26,13 +27,24 @@ describe('Certificate resolver', () => {
         lastName: 'Archer',
         email: 'sterline@archer.com'
       });
+
+      await models.Certificate.query(knexInstance).insert({
+        id,
+        profileId,
+        modules: [ 'PILB' ],
+        species: ['mice']
+      });
+
     } catch (error) {
       console.log(error);
     }
   });
 
-  after(async () => {
+  afterEach(async () => {
     await db.clean(models);
+  });
+
+  after(async () => {
     await knexInstance.destroy();
   });
 
@@ -68,33 +80,23 @@ describe('Certificate resolver', () => {
     });
   });
 
-  // describe('Delete', () => {
-  //
-  //   beforeEach(() => {
-  //     return this.models.Certificate.query().insert({
-  //       id,
-  //       profileId,
-  //       modules: [ 'PILB' ],
-  //       species: ['mice']
-  //     });
-  //   });
-  //
-  //   it('soft deletes the model', () => {
-  //     const opts = {
-  //       action: 'delete',
-  //       id
-  //     };
-  //     return Promise.resolve()
-  //       .then(() => this.certificate(opts))
-  //       .then(() => this.models.Certificate.query().findById(opts.id))
-  //       .then(certificate => {
-  //         assert.deepEqual(certificate, undefined);
-  //       })
-  //       .then(() => this.models.Certificate.queryWithDeleted().findById(opts.id))
-  //       .then(certificate => {
-  //         assert(certificate.deleted);
-  //       });
-  //   });
-  //
-  // });
+  describe('Delete', async () => {
+    it('soft deletes the model', async () => {
+      const opts = {
+        action: 'delete',
+        id
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.certificate(opts, transaction);
+      await transaction.commit();
+
+      const certificate = await models.Certificate.query(knexInstance).findById(opts.id);
+      assert.deepEqual(certificate, undefined);
+
+      const deletedCertificate = await models.Certificate.queryWithDeleted(knexInstance).findById(opts.id);
+      assert(deletedCertificate.deleted);
+    });
+
+  });
 });

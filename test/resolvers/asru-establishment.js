@@ -34,7 +34,6 @@ describe('ASRU-Establishment resolver', () => {
         id: 100,
         name: 'Test University'
       });
-
     } catch (error) {
       console.log(error);
     }
