@@ -4,7 +4,7 @@ try {
 } catch (e) { /* do nothing */ }
 
 const path = require('path');
-const db = require('@asl/schema');
+const db = require('../scripts/asl-schema');
 const StatsD = require('hot-shots');
 const statsd = new StatsD();
 

@@ -1,52 +1,60 @@
-const assert = require('assert');
-const uuid = require('uuid/v4');
+const { v4: uuidv4 } = require('uuid');
 const { asruEstablishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
+const assert = require('assert');
 
-const PROFILE = uuid();
+const PROFILE = uuidv4();
 
 describe('ASRU-Establishment resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.asruEstablishment = asruEstablishment({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.asruEstablishment = asruEstablishment({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Profile.query().insert([
-        {
-          id: PROFILE,
-          firstName: 'Sterling',
-          lastName: 'Archer',
-          email: 'sterling@archer.com',
-          telephone: '01234567890',
-          dob: '1979-12-01',
-          asruUser: true
-        }
-      ]))
-      .then(() => this.models.Establishment.query().insert([
-        {
-          id: 100,
-          name: 'Test University'
-        }
-      ]));
+  beforeEach(async () => {
+    await db.clean(models);
+
+    try {
+      await models.Profile.query(knexInstance).insert({
+        id: PROFILE,
+        firstName: 'Sterling',
+        lastName: 'Archer',
+        email: 'sterling@archer.com',
+        telephone: '01234567890',
+        dob: '1979-12-01',
+        asruUser: true
+      });
+
+      await models.Establishment.query(knexInstance).insert({
+        id: 100,
+        name: 'Test University'
+      });
+
+    } catch (error) {
+      console.log(error);
+    }
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await db.clean(models);
+    await knexInstance.destroy();
   });
 
-  it('rejects with an error if action unknown', () => {
-    return assert.rejects(() => {
-      return this.asruEstablishment({ action: 'nope', data: {} });
-    }, {
-      name: 'Error',
-      message: /Unknown action: nope/
-    });
+  it('rejects with an error if action is unknown', async () => {
+    await assert.rejects(
+      async () => this.asruEstablishment({ action: 'nope', data: {} }),
+      { name: 'Error', message: /Unknown action: nope/ }
+    );
   });
 
   describe('Create', () => {
-    it('can create an association', () => {
+    it('can create an association', async () => {
+      transaction = await knexInstance.transaction();
       const opts = {
         action: 'create',
         data: {
@@ -54,16 +62,18 @@ describe('ASRU-Establishment resolver', () => {
           profileId: PROFILE
         }
       };
-      return Promise.resolve()
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.models.AsruEstablishment.query())
-        .then(associations => {
-          assert.equal(associations.length, 1);
-          assert.equal(associations[0].establishmentId, 100);
-          assert.equal(associations[0].profileId, PROFILE);
-        });
+      await this.asruEstablishment(opts, transaction);
+      await transaction.commit();
+
+      const associations = await models.AsruEstablishment.query(knexInstance);
+
+      assert.equal(associations.length, 1);
+      assert.equal(associations[0].establishmentId, 100);
+      assert.equal(associations[0].profileId, PROFILE);
     });
-    it('does not create multiple associations for the same profile/establishment', () => {
+
+    it('does not create multiple associations for the same profile/establishment', async () => {
+      transaction = await knexInstance.transaction();
       const opts = {
         action: 'create',
         data: {
@@ -71,39 +81,39 @@ describe('ASRU-Establishment resolver', () => {
           profileId: PROFILE
         }
       };
-      return Promise.resolve()
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.asruEstablishment(opts))
-        .then(() => this.models.AsruEstablishment.query())
-        .then(associations => {
-          assert.equal(associations.length, 1);
-          assert.equal(associations[0].establishmentId, 100);
-          assert.equal(associations[0].profileId, PROFILE);
-        });
+      await this.asruEstablishment(opts, transaction);
+      await this.asruEstablishment(opts, transaction);
+      await this.asruEstablishment(opts, transaction);
+      await this.asruEstablishment(opts, transaction);
+      await transaction.commit();
+
+      const associations = await models.AsruEstablishment.query(knexInstance);
+
+      assert.equal(associations.length, 1);
+      assert.equal(associations[0].establishmentId, 100);
+      assert.equal(associations[0].profileId, PROFILE);
     });
   });
 
   describe('Delete', () => {
-    it('can delete an association', () => {
-      return this.models.AsruEstablishment.query().insert({ establishmentId: 100, profileId: PROFILE })
-        .then(() => {
-          const opts = {
-            action: 'delete',
-            data: {
-              establishmentId: 100,
-              profileId: PROFILE
-            }
-          };
+    it('can delete an association', async () => {
+      transaction = await knexInstance.transaction();
+      await models.AsruEstablishment.query(knexInstance).insert({ establishmentId: 100, profileId: PROFILE });
 
-          return Promise.resolve()
-            .then(() => this.asruEstablishment(opts))
-            .then(() => this.models.AsruEstablishment.query())
-            .then(associations => {
-              assert.equal(associations.length, 0);
-            });
-        });
+      const opts = {
+        action: 'delete',
+        data: {
+          establishmentId: 100,
+          profileId: PROFILE
+        }
+      };
+
+      await this.asruEstablishment(opts, transaction);
+      await transaction.commit();
+
+      const associations = await models.AsruEstablishment.query(knexInstance);
+
+      assert.equal(associations.length, 0);
     });
   });
 
