@@ -30,28 +30,34 @@ const basicEmailPreferences = {
 };
 
 describe('Email preferences resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.emailPreferences = emailPreferences({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.emailPreferences = emailPreferences({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert(establishment))
-      .then(() => this.models.Profile.query().insert(holc))
-      .then(() => this.models.Profile.query().insert(basic))
-      .then(() => this.models.EmailPreferences.query().insert(basicEmailPreferences));
+  beforeEach(async () => {
+    await db.clean(models);
+    await models.Establishment.query(knexInstance).insert(establishment);
+    await models.Profile.query(knexInstance).insert(holc);
+    await models.Profile.query(knexInstance).insert(basic);
+    await models.EmailPreferences.query(knexInstance).insert(basicEmailPreferences);
   });
 
-  afterEach(() => {
-    return db.clean(this.models);
+  afterEach(async () => {
+    await db.clean(models);
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await db.clean(models);
+    await knexInstance.destroy();
   });
 
-  it('can save preferences for a user with no existing preferences', () => {
+  it('can save preferences for a user with no existing preferences', async () => {
     const opts = {
       id: holc.id,
       data: {
@@ -62,16 +68,17 @@ describe('Email preferences resolver', () => {
         }
       }
     };
-    return Promise.resolve()
-      .then(() => this.emailPreferences(opts))
-      .then(() => this.models.EmailPreferences.query().findOne({ profileId: holc.id }))
-      .then(record => {
-        assert.ok(record);
-        assert.deepStrictEqual(record.preferences, opts.data.preferences);
-      });
+
+    transaction = await knexInstance.transaction();
+    await this.emailPreferences(opts, transaction);
+    await transaction.commit();
+    const record = await models.EmailPreferences.query(knexInstance).findOne({ profileId: holc.id });
+
+    assert.ok(record);
+    assert.deepStrictEqual(record.preferences, opts.data.preferences);
   });
 
-  it('can update existing preferences', () => {
+  it('can update existing preferences', async () => {
     const opts = {
       id: basic.id,
       data: {
@@ -81,13 +88,14 @@ describe('Email preferences resolver', () => {
         }
       }
     };
-    return Promise.resolve()
-      .then(() => this.emailPreferences(opts))
-      .then(() => this.models.EmailPreferences.query().findOne({ profileId: basic.id }))
-      .then(record => {
-        assert.ok(record);
-        assert.deepStrictEqual(record.preferences, opts.data.preferences);
-      });
+
+    transaction = await knexInstance.transaction();
+    await this.emailPreferences(opts, transaction);
+    await transaction.commit();
+    const record = await models.EmailPreferences.query(knexInstance).findOne({ profileId: basic.id });
+
+    assert.ok(record);
+    assert.deepStrictEqual(record.preferences, opts.data.preferences);
   });
 
 });
