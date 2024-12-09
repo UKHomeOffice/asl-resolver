@@ -28,8 +28,8 @@ describe('Profile resolver', () => {
       models: models,
       jwt: this.jwt,
       keycloak: {
-        grantToken: () => Promise.resolve('abc'),
-        updateUser: () => Promise.resolve()
+        grantToken: async () => 'abc',
+        updateUser: async () => undefined
       },
       emailer,
       logger: Logger({ logLevel: 'silent' })
@@ -39,7 +39,7 @@ describe('Profile resolver', () => {
   beforeEach(async () => {
     await db.clean(models);
 
-    emailer.sendEmail.resetHistory();
+    await emailer.sendEmail.resetHistory();
 
     await models.Profile.query(knexInstance).insert([
         {
@@ -190,7 +190,6 @@ describe('Profile resolver', () => {
 
   describe('Merge', () => {
     beforeEach(async () => {
-
       await models.Establishment.query(knexInstance).insert([
           {
             id: EST_1,
@@ -220,7 +219,8 @@ describe('Profile resolver', () => {
         },
         id: ID_1
       };
-
+      transaction = await knexInstance.transaction();
+      try {
       await models.PIL.query(knexInstance).insert([
           {
             profileId: ID_1,
@@ -233,14 +233,15 @@ describe('Profile resolver', () => {
             status: 'active'
           }
         ]);
-        try {
-          transaction = await knexInstance.transaction();
-          await this.profile(params, transaction);
-        } catch (err) {
-          assert.equal(err.message, 'Cannot merge profiles as both have an active PIL', 'error not thrown');
-        } finally {
+
+        await this.profile(params, transaction);
+      } catch (err) {
+        transaction.rollback();
+        assert.equal(err.message, 'Cannot merge profiles as both have an active PIL', 'error not thrown');
+        if (transaction) {
           transaction.commit();
         }
+      }
     });
 
     it('transfers permissions from profile to target', async () => {
@@ -252,6 +253,7 @@ describe('Profile resolver', () => {
         id: ID_1
       };
 
+      transaction = await knexInstance.transaction();
       await models.Permission.query(knexInstance).insert([
           {
             profileId: ID_1,
@@ -265,7 +267,6 @@ describe('Profile resolver', () => {
           }
         ]).returning('*');
 
-      transaction = await knexInstance.transaction();
       await this.profile(params, transaction);
       transaction.commit();
 
@@ -290,7 +291,6 @@ describe('Profile resolver', () => {
         id: ID_1
       };
 
-      transaction = await knexInstance.transaction();
       await models.Permission.query(knexInstance).insert([
           {
             profileId: ID_1,
@@ -314,6 +314,7 @@ describe('Profile resolver', () => {
       const queryPermissionsProfile1 = await models.Permission.query(knexInstance).where({ profileId: ID_1 });
       assert.equal(queryPermissionsProfile1.length, 0, 'permission not removed from profile 1');
     });
+
     it('transfers over the other relations to target', async () => {
       const params = {
         action: 'merge',

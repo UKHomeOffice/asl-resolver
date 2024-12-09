@@ -11,6 +11,7 @@ const initializeKnex = async () => {
   if (!knexInstance) {
     let dbConfig = await getKnexFile();
     dbConfig = {...dbConfig, ...knexSnakeCaseMappers()};
+    // dbConfig = {...dbConfig, ...knexSnakeCaseMappers(), debug: true};
     knexInstance = knex(dbConfig);
   }
   Model.knex(knexInstance);
