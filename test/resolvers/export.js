@@ -6,37 +6,43 @@ const db = require('../helpers/db');
 const PROFILE_ID = uuid();
 
 describe('Export resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.resolver = resolver({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.resolver = resolver({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Profile.query().insert([
-        {
-          id: PROFILE_ID,
-          firstName: 'Sterling',
-          lastName: 'Archer',
-          email: 'sterling@archer.com',
-          telephone: '01234567890',
-          dob: '1979-12-01',
-          asruUser: true
-        }
-      ]));
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Profile.query(knexInstance).insert([
+      {
+        id: PROFILE_ID,
+        firstName: 'Sterling',
+        lastName: 'Archer',
+        email: 'sterling@archer.com',
+        telephone: '01234567890',
+        dob: '1979-12-01',
+        asruUser: true
+      }
+    ]);
   });
 
-  afterEach(() => {
-    return db.clean(this.models);
+  afterEach(async () => {
+    return db.clean(models);
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await knexInstance.destroy();
   });
 
   describe('create', () => {
 
-    it('adds a pending Export record', () => {
+    it('adds a pending Export record', async () => {
       const params = {
         action: 'create',
         data: {
@@ -46,26 +52,25 @@ describe('Export resolver', () => {
         }
       };
 
-      return this.resolver(params)
-        .then(() => {
-          return this.models.Export.query();
-        })
-        .then(results => {
-          assert.equal(results.length, 1);
-          assert.equal(results[0].type, 'rops');
-          assert.equal(results[0].key, '2021');
-          assert.equal(results[0].profileId, PROFILE_ID);
-          assert.equal(results[0].ready, false);
-        });
-    });
+      transaction = await knexInstance.transaction();
+      await this.resolver(params, transaction);
+      await transaction.commit();
 
+      const results = await models.Export.query(knexInstance);
+
+      assert.equal(results.length, 1);
+      assert.equal(results[0].type, 'rops');
+      assert.equal(results[0].key, '2021');
+      assert.equal(results[0].profileId, PROFILE_ID);
+      assert.equal(results[0].ready, false);
+    });
   });
 
   describe('delete', () => {
 
-    beforeEach(() => {
+    beforeEach(async () => {
       this.id = uuid();
-      return this.models.Export.query().insert({ id: this.id, type: 'rops', key: '2021', profileId: PROFILE_ID });
+      await models.Export.query(knexInstance).insert({ id: this.id, type: 'rops', key: '2021', profileId: PROFILE_ID });
     });
 
     it('throws', () => {

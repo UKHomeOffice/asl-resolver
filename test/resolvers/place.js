@@ -24,14 +24,20 @@ const reminder = {
 };
 
 describe('Place resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.place = place({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.place = place({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insertGraph({
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insertGraph({
         id: ESTABLISHMENT_ID,
         name: 'Univerty of Croydon',
         updatedAt: '2019-01-01T10:38:43.666Z',
@@ -56,15 +62,15 @@ describe('Place resolver', () => {
           type: 'nacwo',
           profileId: PROFILE_ID_2
         }]
-      }));
+      });
   });
 
-  afterEach(() => {
-    return db.clean(this.models);
+  afterEach(async () => {
+    return db.clean(models);
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await knexInstance.destroy();
   });
 
   it('rejects with an error if action unknown', () => {
@@ -77,7 +83,7 @@ describe('Place resolver', () => {
   });
 
   describe('Create', () => {
-    it('can insert a place model', () => {
+    it('can insert a place model', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -88,20 +94,22 @@ describe('Place resolver', () => {
           holding: JSON.stringify(['NOH'])
         }
       };
-      return Promise.resolve()
-        .then(() => this.place(opts))
-        .then(() => this.models.Place.query())
-        .then(places => places[0])
-        .then(place => {
-          assert.ok(place);
-          assert.deepEqual(place.name, opts.data.name);
-          assert.deepEqual(place.site, opts.data.site);
-          assert.deepEqual(place.suitability, JSON.parse(opts.data.suitability));
-          assert.deepEqual(place.holding, JSON.parse(opts.data.holding));
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.place(opts, transaction);
+      transaction.commit();
+
+      const places = await models.Place.query(knexInstance);
+      const place = places[0];
+
+      assert.ok(place);
+      assert.deepEqual(place.name, opts.data.name);
+      assert.deepEqual(place.site, opts.data.site);
+      assert.deepEqual(place.suitability, JSON.parse(opts.data.suitability));
+      assert.deepEqual(place.holding, JSON.parse(opts.data.holding));
     });
 
-    it('creates role relations', () => {
+    it('creates role relations', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -116,16 +124,18 @@ describe('Place resolver', () => {
           ]
         }
       };
-      return Promise.resolve()
-        .then(() => this.place(opts))
-        .then(() => this.models.Place.query().withGraphFetched('roles').first())
-        .then(place => {
-          assert.ok(place);
-          assert.equal(place.roles.length, 2, 'place should have 2 roles assigned');
-          place.roles.map(role => {
-            assert.equal(role.type, 'nacwo', 'both assigned roles should be nacwos');
-          });
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.place(opts, transaction);
+      transaction.commit();
+
+      const place = await models.Place.query(knexInstance).withGraphFetched('roles').first();
+      assert.ok(place);
+      assert.equal(place.roles.length, 2, 'place should have 2 roles assigned');
+
+      place.roles.map(role => {
+        assert.equal(role.type, 'nacwo', 'both assigned roles should be nacwos');
+      });
     });
 
     it('can reject an invalid place model', () => {
@@ -141,7 +151,7 @@ describe('Place resolver', () => {
       }, { name: 'ValidationError' });
     });
 
-    it('updates the establishment record', () => {
+    it('updates the establishment record', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -152,13 +162,14 @@ describe('Place resolver', () => {
           holding: JSON.stringify(['NOH'])
         }
       };
-      return Promise.resolve()
-        .then(() => this.place(opts))
-        .then(() => this.models.Establishment.query().findById(8201))
-        .then(establishment => {
-          assert.ok(establishment);
-          nowish(establishment.updatedAt, new Date().toISOString());
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.place(opts, transaction);
+      transaction.commit();
+
+      const establishment = await models.Establishment.query(knexInstance).findById(8201);
+      assert.ok(establishment);
+      nowish(establishment.updatedAt, new Date().toISOString());
     });
   });
 
@@ -167,8 +178,8 @@ describe('Place resolver', () => {
     const PLACE_ID2 = uuid();
     const PLACE_ID3 = uuid();
 
-    beforeEach(() => {
-      return this.models.Place.query().insertGraph([
+    beforeEach(async () => {
+      await models.Place.query(knexInstance).insertGraph([
         {
           id: PLACE_ID1,
           establishmentId: 8201,
@@ -200,7 +211,7 @@ describe('Place resolver', () => {
     });
 
     describe('Update', () => {
-      it('can patch a model', () => {
+      it('can patch a model', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID3,
@@ -208,16 +219,17 @@ describe('Place resolver', () => {
             suitability: JSON.stringify(['AQ', 'AV'])
           }
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Place.query().findById(opts.id))
-          .then(place => {
-            assert.deepEqual(place.suitability, JSON.parse(opts.data.suitability));
-            assert.deepEqual(place.holding, ['SEP', 'NOH']);
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const place = await models.Place.query(knexInstance).findById(opts.id);
+        assert.deepEqual(place.suitability, JSON.parse(opts.data.suitability));
+        assert.deepEqual(place.holding, ['SEP', 'NOH']);
       });
 
-      it('soft-deletes role relations when they are removed', () => {
+      it('soft-deletes role relations when they are removed', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID1,
@@ -229,19 +241,20 @@ describe('Place resolver', () => {
             roles: [NACWO_ROLE_ID_2]
           }
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.PlaceRole.queryWithDeleted().where('placeId', PLACE_ID1))
-          .then(placeRoles => {
-            assert.equal(placeRoles.length, 2, 'there should be 2 role relations (inc. soft-deleted)');
 
-            const nacwo1Relation = placeRoles.find(pr => pr.roleId === NACWO_ROLE_ID_1);
-            assert(nacwo1Relation.deleted);
-            assert(moment(nacwo1Relation.deleted).isValid());
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
 
-            const nacwo2Relation = placeRoles.find(pr => pr.roleId === NACWO_ROLE_ID_2);
-            assert(!nacwo2Relation.deleted);
-          });
+        const placeRoles = await models.PlaceRole.queryWithDeleted(knexInstance).where('placeId', PLACE_ID1);
+        assert.equal(placeRoles.length, 2, 'there should be 2 role relations (inc. soft-deleted)');
+
+        const nacwo1Relation = placeRoles.find(pr => pr.roleId === NACWO_ROLE_ID_1);
+        assert(nacwo1Relation.deleted);
+        assert(moment(nacwo1Relation.deleted).isValid());
+
+        const nacwo2Relation = placeRoles.find(pr => pr.roleId === NACWO_ROLE_ID_2);
+        assert(!nacwo2Relation.deleted);
       });
 
       it('rejects with an error if id omitted', () => {
@@ -259,7 +272,7 @@ describe('Place resolver', () => {
         });
       });
 
-      it('updates the establishment record', () => {
+      it('updates the establishment record', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID3,
@@ -267,16 +280,17 @@ describe('Place resolver', () => {
             suitability: JSON.stringify(['AQ', 'AV'])
           }
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Establishment.query().findById(8201))
-          .then(establishment => {
-            assert.ok(establishment);
-            nowish(establishment.updatedAt, new Date().toISOString());
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const establishment = await models.Establishment.query(knexInstance).findById(8201);
+        assert.ok(establishment);
+        nowish(establishment.updatedAt, new Date().toISOString());
       });
 
-      it('adds the establishment condition when included', () => {
+      it('adds the establishment condition when included', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID3,
@@ -285,17 +299,17 @@ describe('Place resolver', () => {
             establishmentId: ESTABLISHMENT_ID
           }
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Establishment.query().findById(8201))
-          .then(establishment => {
-            assert.ok(establishment);
-            assert.ok(establishment.conditions === 'Test condition');
-            nowish(establishment.updatedAt, new Date().toISOString());
-          });
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const establishment = await models.Establishment.query(knexInstance).findById(8201);
+        assert.ok(establishment);
+        assert.ok(establishment.conditions === 'Test condition');
+        nowish(establishment.updatedAt, new Date().toISOString());
       });
 
-      it('adds the condition reminder when included', () => {
+      it('adds the condition reminder when included', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID3,
@@ -305,20 +319,20 @@ describe('Place resolver', () => {
             establishmentId: ESTABLISHMENT_ID
           }
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Establishment.query().findById(8201))
-          .then(establishment => {
-            assert.ok(establishment.conditions === 'Test condition');
-          })
-          .then(() => this.models.Reminder.query().findById(REMINDER_ID))
-          .then(reminder => {
-            assert.ok(reminder);
-            nowish(reminder.updatedAt, new Date().toISOString());
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const establishment = await models.Establishment.query(knexInstance).findById(8201);
+        assert.ok(establishment.conditions === 'Test condition');
+
+        const responseReminder = await models.Reminder.query(knexInstance).findById(REMINDER_ID);
+        assert.ok(responseReminder);
+        nowish(responseReminder.updatedAt, new Date().toISOString());
       });
 
-      it('removes the condition when it is not on the payload (deleted)', () => {
+      it('removes the condition when it is not on the payload (deleted)', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID3,
@@ -326,16 +340,17 @@ describe('Place resolver', () => {
             establishmentId: ESTABLISHMENT_ID
           }
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Establishment.query().findById(8201))
-          .then(establishment => {
-            assert.ok(establishment.conditions === null);
-            nowish(establishment.updatedAt, new Date().toISOString());
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const establishment = await models.Establishment.query(knexInstance).findById(8201);
+        assert.ok(establishment.conditions === null);
+        nowish(establishment.updatedAt, new Date().toISOString());
       });
 
-      it('removes the reminder when it has the deleted flag', () => {
+      it('removes the reminder when it has the deleted flag', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID3,
@@ -351,15 +366,16 @@ describe('Place resolver', () => {
             establishmentId: ESTABLISHMENT_ID
           }
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Reminder.query().findById(REMINDER_ID))
-          .then(reminder => {
-            assert.ok(reminder === undefined);
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const reminder = await models.Reminder.query(knexInstance).findById(REMINDER_ID);
+        assert.ok(reminder === undefined);
       });
 
-      it('removes any roles that are missing from the establishment', () => {
+      it('removes any roles that are missing from the establishment', async () => {
         const opts = {
           action: 'update',
           id: PLACE_ID1,
@@ -374,35 +390,37 @@ describe('Place resolver', () => {
             ]
           }
         };
-        return Promise.resolve()
-          .then(() => this.models.Role.query().findById(NACWO_ROLE_ID_1).delete())
-          .then(() => this.place(opts))
-          .then(() => this.models.Place.query().findById(PLACE_ID1).withGraphFetched('roles'))
-          .then(place => {
-            assert.ok(place);
-            assert.equal(place.roles.length, 1);
-            assert.equal(place.roles[0].id, NACWO_ROLE_ID_2);
-          });
+
+        await models.Role.query(knexInstance).findById(NACWO_ROLE_ID_1).delete();
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const place = await models.Place.query(knexInstance).findById(PLACE_ID1).withGraphFetched('roles');
+        assert.ok(place);
+        assert.equal(place.roles.length, 1);
+        assert.equal(place.roles[0].id, NACWO_ROLE_ID_2);
       });
     });
 
     describe('Delete', () => {
-      it('soft deletes the model', () => {
+      it('soft deletes the model', async () => {
         const opts = {
           action: 'delete',
           id: PLACE_ID2
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Place.query().findById(opts.id))
-          .then(place => {
-            assert.deepEqual(place, undefined);
-          })
-          .then(() => this.models.Place.queryWithDeleted().findById(opts.id))
-          .then(place => {
-            assert(place.deleted);
-            assert(moment(place.deleted).isValid());
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const place = await models.Place.query(knexInstance).findById(opts.id);
+        assert.deepEqual(place, undefined);
+
+        const placeMarkedAsDeleted = await models.Place.queryWithDeleted(knexInstance).findById(opts.id);
+        assert(placeMarkedAsDeleted.deleted);
+        assert(moment(placeMarkedAsDeleted.deleted).isValid());
       });
 
       it('throws an error if id omitted', () => {
@@ -417,18 +435,19 @@ describe('Place resolver', () => {
         });
       });
 
-      it('updates the establishment record', () => {
+      it('updates the establishment record', async () => {
         const opts = {
           action: 'delete',
           id: PLACE_ID2
         };
-        return Promise.resolve()
-          .then(() => this.place(opts))
-          .then(() => this.models.Establishment.query().findById(8201))
-          .then(establishment => {
-            assert.ok(establishment);
-            nowish(establishment.updatedAt, new Date().toISOString());
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.place(opts, transaction);
+        transaction.commit();
+
+        const establishment = models.Establishment.query(knexInstance).findById(8201);
+        assert.ok(establishment);
+        nowish(establishment.updatedAt, new Date().toISOString());
       });
     });
   });

@@ -9,46 +9,55 @@ const ropId = uuid();
 const establishmentId = 100;
 
 describe('Procedure resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.procedure = procedure({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.procedure = procedure({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insert({
         id: establishmentId,
         name: 'Uni of Croy'
-      }))
-      .then(() => this.models.Profile.query().insert({
+      });
+
+   await models.Profile.query(knexInstance).insert({
         id: profileId,
         firstName: 'Sterling',
         lastName: 'Archer',
         email: 'sterline@archer.com'
-      }))
-      .then(() => this.models.Project.query().insert({
+      });
+
+   await models.Project.query(knexInstance).insert({
         id: projectId,
         establishmentId,
         title: 'Test proj',
         licenceHolder: profileId
-      }))
-      .then(() => this.models.Rop.query().insert({
+      });
+
+   await models.Rop.query(knexInstance).insert({
         id: ropId,
         projectId,
         year: 2021
-      }));
+      });
   });
 
-  afterEach(() => {
-    return db.clean(this.models);
+  afterEach(async () => {
+    return db.clean(models);
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await knexInstance.destroy();
   });
 
   describe('Create', () => {
-    it('can insert multiple procedure models', () => {
+    it('can insert multiple procedure models', async () => {
       const opts = {
         action: 'create',
         data: [
@@ -76,16 +85,16 @@ describe('Procedure resolver', () => {
           }
         ]
       };
-      return Promise.resolve()
-        .then(() => this.procedure(opts))
-        .then(() => this.models.Procedure.query().where({ ropId }))
-        .then(procedures => {
-          assert.equal(procedures.length, 2);
-          assert.equal(procedures[0].species, 'mice');
-          assert.equal(procedures[0].severityNum, 123);
-          assert.equal(procedures[1].severityNum, 456);
-        });
-    });
 
+      transaction = await knexInstance.transaction();
+      await this.procedure(opts, transaction);
+      transaction.commit();
+
+      const procedures = await models.Procedure.query(knexInstance).where({ ropId });
+      assert.equal(procedures.length, 2);
+      assert.equal(procedures[0].species, 'mice');
+      assert.equal(procedures[0].severityNum, 123);
+      assert.equal(procedures[1].severityNum, 456);
+    });
   });
 });
