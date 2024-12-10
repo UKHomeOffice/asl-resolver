@@ -2,7 +2,7 @@ const assert = require('assert');
 const moment = require('moment');
 const { project } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const generateUuid = require('uuid/v4');
+const { v4: generateUuid } = require('uuid');
 
 const profileId = generateUuid();
 const projectId = generateUuid();
@@ -28,297 +28,295 @@ const isNowish = (date) => {
 };
 
 describe('Project resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.project = project({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.project = project({ models });
   });
 
-  beforeEach(() => {
-    return db
-      .clean(this.models)
-      .then(() =>
-        this.models.Establishment.query().insert([
-          {
-            id: 8201,
-            name: 'University of Croydon'
-          },
-          {
-            id: 8202,
-            name: 'Marvell Pharmaceutical'
-          }
-        ])
-      )
-      .then(() =>
-        this.models.Profile.query().insert([
-          {
-            id: profileId,
-            userId: 'abc123',
-            title: 'Dr',
-            firstName: 'Linford',
-            lastName: 'Christie',
-            address: '1 Some Road',
-            postcode: 'A1 1AA',
-            email: 'test1@example.com',
-            telephone: '01234567890'
-          },
-          {
-            id: licensingId,
-            firstName: 'Sterling',
-            lastName: 'Archer',
-            email: 'sterling@archer.com',
-            asruUser: true,
-            asruLicensing: true
-          },
-          {
-            id: holcId,
-            firstName: 'Holc',
-            lastName: 'Hogan',
-            email: 'holc@hogan.com'
-          }
-        ])
-      );
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insert([
+      {
+        id: 8201,
+        name: 'University of Croydon'
+      },
+      {
+        id: 8202,
+        name: 'Marvell Pharmaceutical'
+      }
+    ]);
+
+    await models.Profile.query(knexInstance).insert([
+      {
+        id: profileId,
+        userId: 'abc123',
+        title: 'Dr',
+        firstName: 'Linford',
+        lastName: 'Christie',
+        address: '1 Some Road',
+        postcode: 'A1 1AA',
+        email: 'test1@example.com',
+        telephone: '01234567890'
+      },
+      {
+        id: licensingId,
+        firstName: 'Sterling',
+        lastName: 'Archer',
+        email: 'sterling@archer.com',
+        asruUser: true,
+        asruLicensing: true
+      },
+      {
+        id: holcId,
+        firstName: 'Holc',
+        lastName: 'Hogan',
+        email: 'holc@hogan.com'
+      }
+    ]);
   });
 
-  afterEach(() => db.clean(this.models));
+  afterEach(async () => {
+    return db.clean(models);
+  });
 
-  after(() => this.models.destroy());
+  after(async () => {
+    await knexInstance.destroy();
+  });
 
   describe('delete amendments', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
-            {
-              id: projectId,
-              status: 'active',
-              title: 'Hypoxy and angiogenesis in cancer therapy',
-              issueDate: new Date('2019-07-11').toISOString(),
-              expiryDate: new Date('2022-07-10').toISOString(),
-              licenceNumber: 'PP-627808',
-              establishmentId: 8201,
-              licenceHolderId: profileId
-            }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
-            {
-              id: '8fb05730-f2ec-4d8f-8085-bbdc86937c54',
-              projectId,
-              data: {},
-              status: 'draft',
-              createdAt: new Date('2019-07-04').toISOString()
-            },
-            {
-              id: '68d79bb1-3573-4402-ac08-7ac27dcbb39e',
-              projectId,
-              data: {},
-              status: 'submitted',
-              createdAt: new Date('2019-07-03').toISOString()
-            },
-            {
-              id: 'ee871d64-cc87-470a-82d9-4a326c9c08dc',
-              projectId,
-              data: {},
-              status: 'draft',
-              createdAt: new Date('2019-07-02').toISOString()
-            },
-            {
-              id: '574266e5-ef34-4e34-bf75-7b6201357e75',
-              projectId,
-              data: {},
-              status: 'granted',
-              createdAt: new Date('2019-07-01').toISOString()
-            },
-            {
-              id: 'b497b05a-f1e0-4596-8b02-60e129e2ab49',
-              projectId,
-              data: {},
-              status: 'submitted',
-              createdAt: new Date('2019-06-04').toISOString()
-            },
-            {
-              id: '71e25eca-e0aa-4555-b09b-62f55b83e890',
-              projectId,
-              data: {},
-              status: 'granted',
-              createdAt: new Date('2019-06-03').toISOString()
-            }
-          ])
-        );
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
+          {
+            id: projectId,
+            status: 'active',
+            title: 'Hypoxy and angiogenesis in cancer therapy',
+            issueDate: new Date('2019-07-11').toISOString(),
+            expiryDate: new Date('2022-07-10').toISOString(),
+            licenceNumber: 'PP-627808',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          }
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
+          {
+            id: '8fb05730-f2ec-4d8f-8085-bbdc86937c54',
+            projectId,
+            data: {},
+            status: 'draft',
+            createdAt: new Date('2019-07-04').toISOString()
+          },
+          {
+            id: '68d79bb1-3573-4402-ac08-7ac27dcbb39e',
+            projectId,
+            data: {},
+            status: 'submitted',
+            createdAt: new Date('2019-07-03').toISOString()
+          },
+          {
+            id: 'ee871d64-cc87-470a-82d9-4a326c9c08dc',
+            projectId,
+            data: {},
+            status: 'draft',
+            createdAt: new Date('2019-07-02').toISOString()
+          },
+          {
+            id: '574266e5-ef34-4e34-bf75-7b6201357e75',
+            projectId,
+            data: {},
+            status: 'granted',
+            createdAt: new Date('2019-07-01').toISOString()
+          },
+          {
+            id: 'b497b05a-f1e0-4596-8b02-60e129e2ab49',
+            projectId,
+            data: {},
+            status: 'submitted',
+            createdAt: new Date('2019-06-04').toISOString()
+          },
+          {
+            id: '71e25eca-e0aa-4555-b09b-62f55b83e890',
+            projectId,
+            data: {},
+            status: 'granted',
+            createdAt: new Date('2019-06-03').toISOString()
+          }
+          ]);
     });
 
-    it('only soft deletes versions since the most recent granted version', () => {
+    it('only soft deletes versions since the most recent granted version', async () => {
       const opts = {
         action: 'delete-amendments',
         id: projectId
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.ProjectVersion.queryWithDeleted())
-        .then((versions) => {
-          versions.map((version) => {
-            if (
-              [
-                '8fb05730-f2ec-4d8f-8085-bbdc86937c54',
-                '68d79bb1-3573-4402-ac08-7ac27dcbb39e',
-                'ee871d64-cc87-470a-82d9-4a326c9c08dc'
-              ].includes(version.id)
-            ) {
-              assert(version.deleted);
-              assert(
-                moment(version.deleted).isValid(),
-                'version was soft deleted'
-              );
-            }
 
-            if (
-              [
-                '574266e5-ef34-4e34-bf75-7b6201357e75',
-                'b497b05a-f1e0-4596-8b02-60e129e2ab49',
-                '71e25eca-e0aa-4555-b09b-62f55b83e890'
-              ].includes(version.id)
-            ) {
-              assert(!version.deleted, 'version was not deleted');
-            }
-          });
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const versions = await models.ProjectVersion.queryWithDeleted(knexInstance);
+
+      versions.map((version) => {
+        if (
+          [
+            '8fb05730-f2ec-4d8f-8085-bbdc86937c54',
+            '68d79bb1-3573-4402-ac08-7ac27dcbb39e',
+            'ee871d64-cc87-470a-82d9-4a326c9c08dc'
+          ].includes(version.id)
+        ) {
+          assert(version.deleted);
+          assert(
+            moment(version.deleted).isValid(),
+            'version was soft deleted'
+          );
+        }
+
+        if (
+          [
+            '574266e5-ef34-4e34-bf75-7b6201357e75',
+            'b497b05a-f1e0-4596-8b02-60e129e2ab49',
+            '71e25eca-e0aa-4555-b09b-62f55b83e890'
+          ].includes(version.id)
+        ) {
+          assert(!version.deleted, 'version was not deleted');
+        }
+      });
     });
   });
 
   describe('fork', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insertGraph({
-            id: projectToForkId,
-            status: 'active',
-            title: 'Granted project',
-            establishmentId: 8201,
-            licenceHolderId: profileId,
-            createdAt: new Date('2019-07-11').toISOString(),
-            updatedAt: new Date('2019-07-11').toISOString()
-          })
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert({
-            projectId: projectToForkId,
-            status: 'granted',
-            data: {
-              title: 'Granted project'
-            },
-            raCompulsory: true
-          })
-        );
-    });
-
-    it('sets the asruVersion flag to true if submitted by asru user', () => {
+    it('sets the asruVersion flag to true if submitted by asru user', async () => {
       const opts = {
         action: 'fork',
         id: projectToForkId,
         changedBy: licensingId
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.ProjectVersion.query()
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const versions = await models.ProjectVersion.query(knexInstance)
             .where({ projectId: projectToForkId })
             .limit(1)
-            .orderBy('createdAt', 'desc')
-        )
-        .then((versions) => versions[0])
-        .then((version) => {
-          assert.equal(version.asruVersion, true);
-        });
+            .orderBy('createdAt', 'desc');
+
+      const version = versions[0];
+      assert.equal(version.asruVersion, true);
     });
 
-    it("doesn't update the asruVersion flag if status is not granted", () => {
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insertGraph({
+        id: projectToForkId,
+        status: 'active',
+        title: 'Granted project',
+        establishmentId: 8201,
+        licenceHolderId: profileId,
+        createdAt: new Date('2019-07-11').toISOString(),
+        updatedAt: new Date('2019-07-11').toISOString()
+      });
+
+      await models.ProjectVersion.query(knexInstance).insert({
+        projectId: projectToForkId,
+        status: 'granted',
+        data: {
+          title: 'Granted project'
+        },
+        raCompulsory: true
+      });
+    });
+
+    it("doesn't update the asruVersion flag if status is not granted", async () => {
       const opts = {
         action: 'fork',
         id: projectToForkId,
         changedBy: licensingId
       };
-      return Promise.resolve()
-        .then(() =>
-          this.models.ProjectVersion.query()
+
+      await models.ProjectVersion.query(knexInstance)
             .where({ projectId: projectToForkId })
-            .patch({ status: 'draft' })
-        )
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.ProjectVersion.query()
+            .patch({ status: 'draft' });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const versions = await models.ProjectVersion.query(knexInstance)
             .where({ projectId: projectToForkId })
             .limit(1)
-            .orderBy('createdAt', 'desc')
-        )
-        .then((versions) => versions[0])
-        .then((version) => {
-          assert.equal(version.asruVersion, false);
-        });
+            .orderBy('createdAt', 'desc');
+
+      const version = versions[0];
+      assert.equal(version.asruVersion, false);
     });
 
-    it('sets the asruVersion flag to false if submitted by establishment user', () => {
+    it('sets the asruVersion flag to false if submitted by establishment user', async () => {
       const opts = {
         action: 'fork',
         id: projectToForkId,
         changedBy: holcId
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.ProjectVersion.query()
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const versions = await models.ProjectVersion.query(knexInstance)
             .where({ projectId: projectToForkId })
             .limit(1)
-            .orderBy('createdAt', 'desc')
-        )
-        .then((versions) => versions[0])
-        .then((version) => {
-          assert.equal(version.asruVersion, false);
-        });
+            .orderBy('createdAt', 'desc');
+
+      const version = versions[0];
+      assert.equal(version.asruVersion, false);
     });
 
-    it('sets the asruVersion flag to false if no changedBy is found', () => {
+    it('sets the asruVersion flag to false if no changedBy is found', async () => {
       const opts = {
         action: 'fork',
         id: projectToForkId
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.ProjectVersion.query()
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const versions = await models.ProjectVersion.query(knexInstance)
             .where({ projectId: projectToForkId })
             .limit(1)
-            .orderBy('createdAt', 'desc')
-        )
-        .then((versions) => versions[0])
-        .then((version) => {
-          assert.equal(version.asruVersion, false);
-        });
+            .orderBy('createdAt', 'desc');
+
+        const version = versions[0];
+        assert.equal(version.asruVersion, false);
     });
 
-    it('preserves the RA compulsory flag', () => {
+    it('preserves the RA compulsory flag', async () => {
       const opts = {
         action: 'fork',
         id: projectToForkId
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.ProjectVersion.query()
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const version = await models.ProjectVersion.query(knexInstance)
             .where({ projectId: projectToForkId })
             .orderBy('createdAt', 'desc')
-            .first()
-        )
-        .then((version) => {
-          assert.equal(version.raCompulsory, true);
-        });
+            .first();
+
+      assert.equal(version.raCompulsory, true);
     });
   });
 
   describe('submit-draft', () => {
-    beforeEach(() => {
-      return Promise.resolve().then(() =>
-        this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
           {
             id: projectId,
             status: 'inactive',
@@ -352,11 +350,10 @@ describe('Project resolver', () => {
             updatedAt: new Date('2019-07-11').toISOString(),
             schemaVersion: 0
           }
-        ])
-      );
+        ]);
     });
 
-    it('sets the species to the project for draft licence', () => {
+    it('sets the species to the project for draft licence', async () => {
       const version = {
         projectId,
         data: {
@@ -368,17 +365,18 @@ describe('Project resolver', () => {
         action: 'submit-draft'
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          const expected = ['Mice', 'Rats'];
-          assert.deepEqual(project.species, expected);
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+
+      const expected = ['Mice', 'Rats'];
+      assert.deepEqual(project.species, expected);
     });
 
-    it('sets the species to the project for legacy licence', () => {
+    it('sets the species to the project for legacy licence', async () => {
       const version = {
         projectId: legacyProject,
         data: {
@@ -401,17 +399,18 @@ describe('Project resolver', () => {
         action: 'submit-draft'
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(legacyProject))
-        .then((project) => {
-          const expected = ['Mice', 'Rats'];
-          assert.deepEqual(project.species, expected);
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(legacyProject);
+      const expected = ['Mice', 'Rats'];
+      assert.deepEqual(project.species, expected);
     });
 
-    it('ignores falsy values', () => {
+    it('ignores falsy values', async () => {
       const version = {
         projectId: legacyProject,
         data: {
@@ -434,17 +433,18 @@ describe('Project resolver', () => {
         action: 'submit-draft'
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(legacyProject))
-        .then((project) => {
-          const expected = ['Rats'];
-          assert.deepEqual(project.species, expected);
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(legacyProject);
+      const expected = ['Rats'];
+      assert.deepEqual(project.species, expected);
     });
 
-    it('does not update the species for active projects', () => {
+    it('does not update the species for active projects', async () => {
       const version = {
         projectId: projectId2,
         data: {
@@ -456,20 +456,20 @@ describe('Project resolver', () => {
         action: 'submit-draft'
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then((project) => {
-          assert.deepEqual(project.species, null);
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+      assert.deepEqual(project.species, null);
     });
   });
 
   describe('grant', () => {
-    beforeEach(() => {
-      return Promise.resolve().then(() =>
-        this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
           {
             id: projectId,
             status: 'inactive',
@@ -504,33 +504,31 @@ describe('Project resolver', () => {
             updatedAt: new Date('2019-07-11').toISOString(),
             schemaVersion: 0
           }
-        ])
-      );
+        ]);
     });
 
     describe('RA', () => {
       describe('fork-ra', () => {
-        it('creates a new draft RA model if nothing to fork', () => {
+        it('creates a new draft RA model if nothing to fork', async () => {
           const opts = {
             action: 'fork-ra',
             id: projectId
           };
 
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ra = await models.RetrospectiveAssessment.query(knexInstance)
                 .where({ projectId })
-                .first()
-            )
-            .then((ra) => {
-              assert.ok(ra);
-              assert.deepEqual(ra.data, null);
-              assert.deepEqual(ra.status, 'draft');
-            });
+                .first();
+
+          assert.ok(ra);
+          assert.deepEqual(ra.data, null);
+          assert.deepEqual(ra.status, 'draft');
         });
 
-        it('forks the latest granted ra version', () => {
+        it('forks the latest granted ra version', async () => {
           const opts = {
             action: 'fork-ra',
             id: projectId
@@ -544,22 +542,22 @@ describe('Project resolver', () => {
             status: 'granted'
           };
 
-          return Promise.resolve()
-            .then(() => this.models.RetrospectiveAssessment.query().insert(ra))
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
+          await models.RetrospectiveAssessment.query(knexInstance).insert(ra);
+
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ras = await models.RetrospectiveAssessment.query(knexInstance)
                 .where({ projectId })
-                .orderBy('createdAt', 'desc')
-            )
-            .then((ras) => {
-              assert.equal(ras.length, 2);
-              assert.equal(ras[0].status, 'draft');
-              assert.deepEqual(ras[0].data, ra.data);
-            });
+                .orderBy('createdAt', 'desc');
+
+          assert.equal(ras.length, 2);
+          assert.equal(ras[0].status, 'draft');
+          assert.deepEqual(ras[0].data, ra.data);
         });
 
-        it('forks the latest submitted ra version', () => {
+        it('forks the latest submitted ra version', async () => {
           const opts = {
             action: 'fork-ra',
             id: projectId
@@ -573,26 +571,24 @@ describe('Project resolver', () => {
             status: 'submitted'
           };
 
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersion)
-            )
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersion);
+
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ras = await models.RetrospectiveAssessment.query(knexInstance)
                 .where({ projectId })
-                .orderBy('createdAt', 'desc')
-            )
-            .then((ras) => {
-              assert.equal(ras.length, 2);
-              assert.equal(ras[0].status, 'draft');
-              assert.deepEqual(ras[0].data, raVersion.data);
-            });
+                .orderBy('createdAt', 'desc');
+
+          assert.equal(ras.length, 2);
+          assert.equal(ras[0].status, 'draft');
+          assert.deepEqual(ras[0].data, raVersion.data);
         });
       });
 
       describe('submit-ra', () => {
-        it('submits a draft ra', () => {
+        it('submits a draft ra', async () => {
           const opts = {
             action: 'submit-ra',
             id: projectId
@@ -606,24 +602,22 @@ describe('Project resolver', () => {
             status: 'draft'
           };
 
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersion)
-            )
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersion);
+
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ra = await models.RetrospectiveAssessment.query(knexInstance)
                 .where({ projectId })
-                .first()
-            )
-            .then((ra) => {
-              assert.ok(ra);
-              assert.deepEqual(ra.data, raVersion.data);
-              assert.equal(ra.status, 'submitted');
-            });
+                .first();
+
+          assert.ok(ra);
+          assert.deepEqual(ra.data, raVersion.data);
+          assert.equal(ra.status, 'submitted');
         });
 
-        it('submits latest draft ra', () => {
+        it('submits latest draft ra', async () => {
           const opts = {
             action: 'submit-ra',
             id: projectId
@@ -648,25 +642,22 @@ describe('Project resolver', () => {
             }
           ];
 
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersions)
-            )
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
-                .where({ projectId, status: 'submitted' })
-                .first()
-            )
-            .then((ra) => {
-              assert.ok(ra);
-              assert.equal(ra.data.foo, 'baz');
-            });
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersions);
+
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ra = await models.RetrospectiveAssessment.query(knexInstance)
+                .where({ projectId, status: 'submitted' }).first();
+
+          assert.ok(ra);
+          assert.equal(ra.data.foo, 'baz');
         });
       });
 
       describe('grant-ra', () => {
-        it('grants the latest submitted ra version', () => {
+        it('grants the latest submitted ra version', async () => {
           const opts = {
             action: 'grant-ra',
             id: projectId
@@ -691,27 +682,24 @@ describe('Project resolver', () => {
             }
           ];
 
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersions)
-            )
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersions);
+
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ra = await models.RetrospectiveAssessment.query(knexInstance)
                 .where({ projectId, status: 'granted' })
-                .first()
-            )
-            .then((ra) => {
-              assert.ok(ra);
-              assert.equal(ra.data.foo, 'baz');
-            })
-            .then(() => this.models.Project.query().findById(projectId))
-            .then((project) => {
-              assert.ok(isNowish(project.raGrantedDate));
-            });
+                .first();
+
+          assert.ok(ra);
+          assert.equal(ra.data.foo, 'baz');
+
+          const project = await models.Project.query(knexInstance).findById(projectId);
+          assert.ok(isNowish(project.raGrantedDate));
         });
 
-        it('returns returns project if latest version is granted (regression)', () => {
+        it('returns returns project if latest version is granted (regression)', async () => {
           const opts = {
             action: 'grant-ra',
             id: projectId
@@ -736,26 +724,23 @@ describe('Project resolver', () => {
             }
           ];
 
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersions)
-            )
-            .then(() => this.project(opts))
-            .then((project) => {
-              assert.equal(project.id, projectId);
-            })
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersions);
+
+          transaction = await knexInstance.transaction();
+          const project = await this.project(opts, transaction);
+          transaction.commit();
+
+          assert.equal(project.id, projectId);
+
+          const ra = await models.RetrospectiveAssessment.query(knexInstance)
                 .where({ projectId, status: 'granted' })
-                .first()
-            )
-            .then((ra) => {
-              assert.ok(ra);
-              assert.equal(ra.data.foo, 'baz');
-            });
+                .first();
+
+          assert.ok(ra);
+          assert.equal(ra.data.foo, 'baz');
         });
 
-        it('does not allow granting of a non-submitted version', () => {
+        it('does not allow granting of a non-submitted version', async () => {
           const opts = {
             action: 'grant-ra',
             id: projectId,
@@ -778,16 +763,12 @@ describe('Project resolver', () => {
               createdAt: moment().toISOString()
             }
           ];
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersions)
-            )
-            .then(() => {
-              return assert.rejects(() => this.project(opts));
-            });
+
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersions);
+          assert.rejects(() => this.project(opts));
         });
 
-        it('allows granting of a non-submitted version if request made by ASRU user', () => {
+        it('allows granting of a non-submitted version if request made by ASRU user', async () => {
           const opts = {
             action: 'grant-ra',
             id: projectId,
@@ -801,30 +782,28 @@ describe('Project resolver', () => {
               createdAt: moment().toISOString()
             }
           ];
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersions)
-            )
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.query()
+
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersions);
+
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ra = await models.RetrospectiveAssessment.query(knexInstance)
                 .where({ projectId, status: 'granted' })
-                .first()
-            )
-            .then((ra) => {
-              assert.ok(ra);
-            })
-            .then(() => this.models.Project.query().findById(projectId))
-            .then((project) => {
-              assert.ok(isNowish(project.raGrantedDate));
-            });
+                .first();
+
+          assert.ok(ra);
+
+          const project = await models.Project.query(knexInstance).findById(projectId);
+          assert.ok(isNowish(project.raGrantedDate));
         });
       });
 
       describe('delete-ra', () => {
         const raVersionId = generateUuid();
 
-        it('deletes the specified RA', () => {
+        it('deletes the specified RA', async () => {
           const opts = {
             action: 'delete-ra',
             id: projectId,
@@ -844,28 +823,23 @@ describe('Project resolver', () => {
             }
           ];
 
-          return Promise.resolve()
-            .then(() =>
-              this.models.RetrospectiveAssessment.query().insert(raVersions)
-            )
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.RetrospectiveAssessment.queryWithDeleted().findById(
-                raVersionId
-              )
-            )
-            .then((ra) => {
-              assert.ok(
-                ra.deleted && moment(ra.deleted).isValid(),
-                'ra should have a valid deleted date'
-              );
-            });
+          await models.RetrospectiveAssessment.query(knexInstance).insert(raVersions);
+
+          transaction = await knexInstance.transaction();
+          await this.project(opts, transaction);
+          transaction.commit();
+
+          const ra = await models.RetrospectiveAssessment.queryWithDeleted(knexInstance).findById(raVersionId);
+          assert.ok(
+            ra.deleted && moment(ra.deleted).isValid(),
+            'ra should have a valid deleted date'
+          );
         });
       });
     });
 
     describe('species', () => {
-      it('sets the species from the project version', () => {
+      it('sets the species from the project version', async () => {
         const opts = {
           action: 'grant',
           id: projectId
@@ -891,32 +865,34 @@ describe('Project resolver', () => {
           }
         };
 
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.project(opts))
-          .then(() => this.models.Project.query().findById(projectId))
-          .then((project) => {
-            const expected = [
-              'Mice',
-              'Rats',
-              'JABU',
-              'BABU',
-              'FROGGY',
-              'Phoenix',
-              'Humpback',
-              'Pug',
-              'Fried chicken',
-              'Zebra',
-              'Blobfish',
-              'Bush baby',
-              'Bastard lizard',
-              'Kangaroo'
-            ];
-            assert.deepEqual(project.species, expected);
-          });
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const project = await models.Project.query(knexInstance).findById(projectId);
+        const expected = [
+          'Mice',
+          'Rats',
+          'JABU',
+          'BABU',
+          'FROGGY',
+          'Phoenix',
+          'Humpback',
+          'Pug',
+          'Fried chicken',
+          'Zebra',
+          'Blobfish',
+          'Bush baby',
+          'Bastard lizard',
+          'Kangaroo'
+        ];
+
+        assert.deepEqual(project.species, expected);
       });
 
-      it('updates the species from the project version', () => {
+      it('updates the species from the project version', async () => {
         const opts = {
           action: 'grant',
           id: projectId
@@ -931,22 +907,20 @@ describe('Project resolver', () => {
           }
         };
 
-        return Promise.resolve()
-          .then(() =>
-            this.models.Project.query()
-              .findById(projectId)
-              .patch({ species: ['mice'] })
-          )
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.project(opts))
-          .then(() => this.models.Project.query().findById(projectId))
-          .then((project) => {
-            const expected = ['Mice', 'Rats'];
-            assert.deepEqual(project.species, expected);
-          });
+        await models.Project.query(knexInstance).findById(projectId).patch({ species: ['mice'] });
+
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const project = await models.Project.query(knexInstance).findById(projectId);
+        const expected = ['Mice', 'Rats'];
+        assert.deepEqual(project.species, expected);
       });
 
-      it('sets species to null if blank', () => {
+      it('sets species to null if blank', async () => {
         const opts = {
           action: 'grant',
           id: projectId
@@ -960,21 +934,19 @@ describe('Project resolver', () => {
           }
         };
 
-        return Promise.resolve()
-          .then(() =>
-            this.models.Project.query()
-              .findById(projectId)
-              .patch({ species: ['mice'] })
-          )
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.project(opts))
-          .then(() => this.models.Project.query().findById(projectId))
-          .then((project) => {
-            assert.deepEqual(project.species, null);
-          });
+        await models.Project.query(knexInstance).findById(projectId).patch({ species: ['mice'] });
+
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const project = await models.Project.query(knexInstance).findById(projectId);
+        assert.deepEqual(project.species, null);
       });
 
-      it('sets species for legacy project', () => {
+      it('sets species for legacy project', async () => {
         const opts = {
           action: 'grant',
           id: legacyProject
@@ -1015,24 +987,27 @@ describe('Project resolver', () => {
           }
         };
 
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.project(opts))
-          .then(() => this.models.Project.query().findById(legacyProject))
-          .then((project) => {
-            const expected = [
-              'Amphibians',
-              'Birds',
-              'Camelids',
-              'JABU',
-              'BABU'
-            ];
-            assert.deepEqual(project.species, expected);
-          });
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const project = await models.Project.query(knexInstance).findById(legacyProject);
+
+        const expected = [
+          'Amphibians',
+          'Birds',
+          'Camelids',
+          'JABU',
+          'BABU'
+        ];
+
+        assert.deepEqual(project.species, expected);
       });
     });
 
-    it('grants a new project updating the issue date, expiry date, title, and status', () => {
+    it('grants a new project updating the issue date, expiry date, title, and status', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1044,43 +1019,46 @@ describe('Project resolver', () => {
           title: 'title of the newly granted project'
         }
       };
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          const expiryDate = moment(project.issueDate)
-            .add({ years: 5, months: 0 })
-            .subtract(1, 'days')
-            .endOf('day')
-            .utc(true)
-            .subtract(1, 'hour')
-            .toISOString();
-          assert.ok(project.licenceNumber, 'licence number was not generated');
-          assert.equal(
-            project.expiryDate,
-            expiryDate,
-            'expiry date was not set to default 5 years'
-          );
-          assert.equal(
-            project.title,
-            version.data.title,
-            'title was not updated'
-          );
-          assert.equal(project.status, 'active', 'project was not activated');
 
-          return this.models.ProjectVersion.query()
-            .findOne({ projectId, status: 'granted' })
-            .then((version) => {
-              assert.ok(
-                version,
-                'project version status not updated to granted'
-              );
-            });
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+
+      const expiryDate = moment(project.issueDate)
+        .add({ years: 5, months: 0 })
+        .subtract(1, 'days')
+        .endOf('day')
+        .utc(true)
+        .subtract(1, 'hour')
+        .toISOString();
+
+      assert.ok(project.licenceNumber, 'licence number was not generated');
+      assert.equal(
+        project.expiryDate,
+        expiryDate,
+        'expiry date was not set to default 5 years'
+      );
+      assert.equal(
+        project.title,
+        version.data.title,
+        'title was not updated'
+      );
+      assert.equal(project.status, 'active', 'project was not activated');
+
+      const versionWithGrantedStatus = await models.ProjectVersion.query(knexInstance)
+            .findOne({ projectId, status: 'granted' });
+
+      assert.ok(
+        versionWithGrantedStatus,
+        'project version status not updated to granted'
+      );
     });
 
-    it('grants a new project adding the hbaToken from the task', () => {
+    it('grants a new project adding the hbaToken from the task', async () => {
       const opts = {
         action: 'grant',
         id: projectId,
@@ -1096,30 +1074,31 @@ describe('Project resolver', () => {
           title: 'title of the newly granted project'
         }
       };
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.ProjectVersion.query().findOne({
+
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const versionWithGrantedStatus = await models.ProjectVersion.query(knexInstance).findOne({
             projectId,
             status: 'granted'
-          })
-        )
-        .then((version) => {
-          assert.equal(
-            version.hbaToken,
-            opts.meta.hbaToken,
-            'Expected token to be persisted'
-          );
-          assert.equal(
-            version.hbaFilename,
-            opts.meta.hbaFilename,
-            'Expected hba filename to be persisted'
-          );
-        });
+          });
+
+      assert.equal(
+        versionWithGrantedStatus.hbaToken,
+        opts.meta.hbaToken,
+        'Expected token to be persisted'
+      );
+      assert.equal(
+        versionWithGrantedStatus.hbaFilename,
+        opts.meta.hbaFilename,
+        'Expected hba filename to be persisted'
+      );
     });
 
-    it('sets the ra date to 6 months after expiry if required', () => {
+    it('sets the ra date to 6 months after expiry if required', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1132,19 +1111,22 @@ describe('Project resolver', () => {
           title: 'title of RA project'
         }
       };
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          const expectedRADate = moment(project.expiryDate)
-            .add({ months: 6 })
-            .toISOString();
-          assert.equal(project.raDate, expectedRADate);
-        });
+
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+
+      const expectedRADate = moment(project.expiryDate).add({ months: 6 })
+        .toISOString();
+
+      assert.equal(project.raDate, expectedRADate);
     });
 
-    it('sets the ra date to null if not required', () => {
+    it('sets the ra date to null if not required', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1157,19 +1139,20 @@ describe('Project resolver', () => {
         }
       };
       const raDate = moment().add({ years: 5, months: 6 }).toISOString();
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().findById(projectId).patch({ raDate })
-        )
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.equal(project.raDate, null);
-        });
+
+      await models.Project.query(knexInstance).findById(projectId).patch({ raDate });
+
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = models.Project.query().findById(projectId);
+      assert.equal(project.raDate, null);
     });
 
-    it('removes soft deleted protocols', () => {
+    it('removes soft deleted protocols', async () => {
       const PROTOCOL_1_ID = '0ac6500f-b618-4632-a00f-a01c5ee35e30';
       const PROTOCOL_2_ID = 'a5d76be3-f31d-42c2-9578-212be1d7a691';
       const opts = {
@@ -1192,22 +1175,22 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.Project.query().findById(projectId).eager('version')
-        )
-        .then((project) => {
-          assert.equal(
-            project.version[0].data.protocols.length,
-            1,
-            'Expected protocol to be removed'
-          );
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId).withGraphFetched('version');
+
+      assert.equal(
+        project.version[0].data.protocols.length,
+        1,
+        'Expected protocol to be removed'
+      );
     });
 
-    it('removes soft deleted top level conditions', () => {
+    it('removes soft deleted top level conditions', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1236,17 +1219,18 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.ProjectVersion.query().findById(versionId))
-        .then((version) => {
-          assert.equal(version.data.conditions.length, 1);
-          assert.equal(version.data.conditions[0].key, 'code-of-practice');
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const responseVersion = await models.ProjectVersion.query(knexInstance).findById(versionId);
+      assert.equal(responseVersion.data.conditions.length, 1);
+      assert.equal(responseVersion.data.conditions[0].key, 'code-of-practice');
     });
 
-    it('removes soft deleted protocol conditions', () => {
+    it('removes soft deleted protocol conditions', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1285,22 +1269,23 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.ProjectVersion.query().findById(versionId))
-        .then((version) => {
-          assert.equal(version.data.protocols[0].conditions.length, 1);
-          assert.equal(
-            version.data.protocols[0].conditions[0].key,
-            'non-deleted-condition'
-          );
-          assert.equal(version.data.protocols[1].conditions.length, 0);
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const responseVersion = await models.ProjectVersion.query(knexInstance).findById(versionId);
+      assert.equal(responseVersion.data.protocols[0].conditions.length, 1);
+      assert.equal(
+        responseVersion.data.protocols[0].conditions[0].key,
+        'non-deleted-condition'
+      );
+      assert.equal(responseVersion.data.protocols[1].conditions.length, 0);
     });
 
     describe('condition reminders', () => {
-      it('activates pending reminders for conditions that were granted', () => {
+      it('activates pending reminders for conditions that were granted', async () => {
         const version = {
           id: generateUuid(),
           projectId,
@@ -1347,30 +1332,31 @@ describe('Project resolver', () => {
           id: projectId
         };
 
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.models.Reminder.query().insert(reminders))
-          .then(() => this.project(opts))
-          .then(() =>
-            this.models.Reminder.query().where({
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        await models.Reminder.query(knexInstance).insert(reminders);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const responseReminders = await models.Reminder.query(knexInstance).where({
               modelType: 'project',
               modelId: projectId
-            })
-          )
-          .then((reminders) => {
-            assert.deepEqual(
-              reminders.length,
-              2,
-              'there should be two reminders'
-            );
-            assert.ok(
-              reminders.every((r) => r.status === 'active'),
-              'all the reminders should be active'
-            );
-          });
+            });
+
+        assert.deepEqual(
+          responseReminders.length,
+          2,
+          'there should be two reminders'
+        );
+        assert.ok(
+          responseReminders.every((r) => r.status === 'active'),
+          'all the reminders should be active'
+        );
       });
 
-      it('soft deletes reminders that were orphaned by the removal of a condition', () => {
+      it('soft deletes reminders that were orphaned by the removal of a condition', async () => {
         const version = {
           id: generateUuid(),
           projectId,
@@ -1411,32 +1397,33 @@ describe('Project resolver', () => {
           id: projectId
         };
 
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.models.Reminder.query().insert(reminders))
-          .then(() => this.project(opts))
-          .then(() =>
-            this.models.Reminder.query().where({
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        await models.Reminder.query(knexInstance).insert(reminders);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const responseReminders = await models.Reminder.query(knexInstance).where({
               modelType: 'project',
               modelId: projectId
-            })
-          )
-          .then((reminders) => {
-            assert.deepEqual(
-              reminders.length,
-              1,
-              'there should be only one reminder'
-            );
-            assert.deepEqual(
-              reminders[0].conditionKey,
-              'code-of-practice',
-              'the reminder should be for the correct condition'
-            );
-          });
+            });
+
+        assert.deepEqual(
+          responseReminders.length,
+          1,
+          'there should be only one reminder'
+        );
+        assert.deepEqual(
+          responseReminders[0].conditionKey,
+          'code-of-practice',
+          'the reminder should be for the correct condition'
+        );
       });
     });
 
-    it('removes establishments if additional establishments is set to false', () => {
+    it('removes establishments if additional establishments is set to false', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1459,16 +1446,17 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts))
-        .then(() => this.models.ProjectVersion.query().findById(versionId))
-        .then((version) => {
-          assert.deepStrictEqual(version.data.establishments, []);
-        });
+      await models.ProjectVersion.query(knexInstance).insert(version);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const responseVersion = await models.ProjectVersion.query(knexInstance).findById(versionId);
+      assert.deepStrictEqual(responseVersion.data.establishments, []);
     });
 
-    it('resolves if project version is already granted', () => {
+    it('resolves if project version is already granted', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1478,12 +1466,13 @@ describe('Project resolver', () => {
         status: 'granted'
       };
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(version))
-        .then(() => this.project(opts));
+      await models.ProjectVersion.query(knexInstance).insert(version);
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
     });
 
-    it('does not touch old submitted versions if there is a more recent granted version', () => {
+    it('does not touch old submitted versions if there is a more recent granted version', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1503,23 +1492,23 @@ describe('Project resolver', () => {
         }
       ];
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(versions))
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.ProjectVersion.query()
+      await models.ProjectVersion.query(knexInstance).insert(versions);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const responseVersions = await models.ProjectVersion.query(knexInstance)
             .where({ projectId })
-            .orderBy('createdAt', 'desc')
-        )
-        .then((versions) => {
-          assert.deepEqual(
-            versions.map((v) => v.status),
-            ['granted', 'submitted']
-          );
-        });
+            .orderBy('createdAt', 'desc');
+
+      assert.deepEqual(
+        responseVersions.map((v) => v.status),
+        ['granted', 'submitted']
+      );
     });
 
-    it('throws if latest version is a draft', () => {
+    it('throws if latest version is a draft', async () => {
       const opts = {
         action: 'grant',
         id: projectId
@@ -1539,15 +1528,12 @@ describe('Project resolver', () => {
         }
       ];
 
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(versions))
-        .then(() => {
-          assert.rejects(() => this.project(opts));
-        });
+      await models.ProjectVersion.query(knexInstance).insert(versions);
+      await assert.rejects(() => this.project(opts));
     });
 
     describe('duration', () => {
-      it('grants a new project updating the expiry date based on duration', () => {
+      it('grants a new project updating the expiry date based on duration', async () => {
         const opts = {
           action: 'grant',
           id: projectId
@@ -1563,27 +1549,31 @@ describe('Project resolver', () => {
             }
           }
         };
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.project(opts))
-          .then(() => this.models.Project.query().findById(projectId))
-          .then((project) => {
-            const expiryDate = moment(project.issueDate)
-              .add(version.data.duration)
-              .subtract(1, 'days')
-              .endOf('day')
-              .utc(true)
-              .subtract(1, 'hour')
-              .toISOString();
-            assert.equal(
-              project.expiryDate,
-              expiryDate,
-              'expiry date was not set from duration'
-            );
-          });
+
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const project = await models.Project.query(knexInstance).findById(projectId);
+
+        const expiryDate = moment(project.issueDate)
+          .add(version.data.duration)
+          .subtract(1, 'days')
+          .endOf('day')
+          .utc(true)
+          .subtract(1, 'hour')
+          .toISOString();
+
+        assert.equal(
+            project.expiryDate,
+            expiryDate,
+            'expiry date was not set from duration'
+        );
       });
 
-      it('allows a maximum of 5 years from issue date', () => {
+      it('allows a maximum of 5 years from issue date', async () => {
         const opts = {
           action: 'grant',
           id: projectId
@@ -1599,24 +1589,28 @@ describe('Project resolver', () => {
             }
           }
         };
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(version))
-          .then(() => this.project(opts))
-          .then(() => this.models.Project.query().findById(projectId))
-          .then((project) => {
-            const expiryDate = moment(project.issueDate)
-              .add({ years: 5, months: 0 })
-              .subtract(1, 'days')
-              .endOf('day')
-              .utc(true)
-              .subtract(1, 'hour')
-              .toISOString();
-            assert.equal(
-              project.expiryDate,
-              expiryDate,
-              'maximum duration of 5 years not honoured'
-            );
-          });
+
+        await models.ProjectVersion.query(knexInstance).insert(version);
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const project = await models.Project.query(knexInstance).findById(projectId);
+
+        const expiryDate = moment(project.issueDate)
+          .add({ years: 5, months: 0 })
+          .subtract(1, 'days')
+          .endOf('day')
+          .utc(true)
+          .subtract(1, 'hour')
+          .toISOString();
+
+        assert.equal(
+          project.expiryDate,
+          expiryDate,
+          'maximum duration of 5 years not honoured'
+        );
       });
 
       describe('validation', () => {
@@ -1647,31 +1641,35 @@ describe('Project resolver', () => {
           };
           it(`Testing expiryDate correctly set from duration - ${
             index + 1
-          }`, () => {
-            return Promise.resolve()
-              .then(() => this.models.ProjectVersion.query().insert(version))
-              .then(() => this.project(opts))
-              .then(() => this.models.Project.query().findById(projectId))
-              .then((project) => {
-                const issueDate = moment(project.issueDate);
-                const expiryDate = moment(project.expiryDate);
-                let diff;
+          }`, async () => {
 
-                // handle dates where the expiry month has more days than the issue month
-                if (issueDate.date() < expiryDate.date()) {
-                  diff = expiryDate.diff(issueDate, 'months');
-                } else {
-                  diff = issueDate.diff(expiryDate, 'months');
-                }
-                assert.equal(Math.abs(diff), expected);
-              });
+            await models.ProjectVersion.query(knexInstance).insert(version);
+
+            transaction = await knexInstance.transaction();
+            await this.project(opts, transaction);
+            transaction.commit();
+
+            const project = await models.Project.query(knexInstance).findById(projectId);
+
+            const issueDate = moment(project.issueDate);
+            const expiryDate = moment(project.expiryDate);
+            let diff;
+
+            // handle dates where the expiry month has more days than the issue month
+            if (issueDate.date() < expiryDate.date()) {
+              diff = expiryDate.diff(issueDate, 'months');
+            } else {
+              diff = issueDate.diff(expiryDate, 'months');
+            }
+
+            assert.equal(Math.abs(diff), expected);
           });
         };
         tests.forEach(runTest);
       });
     });
 
-    it('Updates active project ignoring expiry as not changed since granted', () => {
+    it('Updates active project ignoring expiry as not changed since granted', async () => {
       const opts = {
         action: 'grant',
         id: projectId2
@@ -1701,24 +1699,25 @@ describe('Project resolver', () => {
           createdAt: new Date('2019-12-18').toISOString()
         }
       ];
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(versions))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then((previous) => {
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .then(() => this.models.Project.query().findById(projectId2))
-            .then((project) => {
-              assert.equal(
-                project.expiryDate,
-                previous.expiryDate,
-                'Expiry date was updated'
-              );
-            });
-        });
+
+      await models.ProjectVersion.query(knexInstance).insert(versions);
+
+      const previous = await models.Project.query(knexInstance).findById(projectId2);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+
+      assert.equal(
+        project.expiryDate,
+        previous.expiryDate,
+        'Expiry date was updated'
+      );
     });
 
-    it('updates the amendedDate if an amendment is granted', () => {
+    it('updates the amendedDate if an amendment is granted', async () => {
       const opts = {
         action: 'grant',
         id: projectId2
@@ -1750,24 +1749,24 @@ describe('Project resolver', () => {
           updatedAt: new Date('2019-10-11').toISOString()
         }
       ];
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(versions))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then(() => {
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .then(() => this.models.Project.query().findById(projectId2))
-            .then((project) => {
-              assert(project.amendedDate, 'amendment date was set');
-              assert(
-                isNowish(project.amendedDate),
-                'the amended date is set to the granted time'
-              );
-            });
-        });
+
+      await models.ProjectVersion.query(knexInstance).insert(versions);
+
+      await models.Project.query(knexInstance).findById(projectId2);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+      assert(project.amendedDate, 'amendment date was set');
+      assert(
+        isNowish(project.amendedDate),
+        'the amended date is set to the granted time'
+      );
     });
 
-    it('does not set the amendedDate if there is no previous granted version', () => {
+    it('does not set the amendedDate if there is no previous granted version', async () => {
       const opts = {
         action: 'grant',
         id: projectId2
@@ -1786,25 +1785,26 @@ describe('Project resolver', () => {
           updatedAt: new Date('2019-10-11').toISOString()
         }
       ];
-      return Promise.resolve()
-        .then(() => this.models.ProjectVersion.query().insert(versions))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then(() => {
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .then(() => this.models.Project.query().findById(projectId2))
-            .then((project) => {
-              assert.equal(
-                project.amendedDate,
-                null,
-                'amendment date was not set'
-              );
-            });
-        });
+
+      await models.ProjectVersion.query(knexInstance).insert(versions);
+
+      await models.Project.query(knexInstance).findById(projectId2);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+
+      assert.equal(
+        project.amendedDate,
+        null,
+        'amendment date was not set'
+      );
     });
 
     describe('Additional availability', () => {
-      it('activates existing projectEstablishment joins', () => {
+      it('activates existing projectEstablishment joins', async () => {
         const opts = {
           action: 'grant',
           id: projectId2
@@ -1823,27 +1823,27 @@ describe('Project resolver', () => {
             }
           }
         ];
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(versions))
-          .then(() =>
-            this.models.ProjectEstablishment.query().insert({
+
+        await models.ProjectVersion.query(knexInstance).insert(versions);
+
+        await models.ProjectEstablishment.query(knexInstance).insert({
               establishmentId: 8202,
               projectId: projectId2,
               status: 'draft'
-            })
-          )
-          .then(() => this.project(opts))
-          .then(() =>
-            this.models.ProjectEstablishment.query()
+            });
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const projectEstablishment = await models.ProjectEstablishment.query(knexInstance)
               .where({ establishmentId: 8202, projectId: projectId2 })
-              .first()
-          )
-          .then((projectEstablishment) => {
-            assert.equal(projectEstablishment.status, 'active');
-          });
+              .first();
+
+        assert.equal(projectEstablishment.status, 'active');
       });
 
-      it('deactivates existing joins that have been removed', () => {
+      it('deactivates existing joins that have been removed', async () => {
         const opts = {
           action: 'grant',
           id: projectId2
@@ -1883,38 +1883,35 @@ describe('Project resolver', () => {
             updatedAt: new Date('2020-10-11').toISOString()
           }
         ];
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(versions))
-          .then(() =>
-            this.models.ProjectEstablishment.query().insert({
+
+        await models.ProjectVersion.query(knexInstance).insert(versions);
+        await models.ProjectEstablishment.query(knexInstance).insert({
               establishmentId: 8202,
               projectId: projectId2,
               status: 'active'
-            })
-          )
-          .then(() => this.project(opts))
-          .then(() =>
-            this.models.ProjectEstablishment.query()
+            });
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const projectEstablishment = await models.ProjectEstablishment.query(knexInstance)
               .where({ establishmentId: 8202, projectId: projectId2 })
-              .first()
-          )
-          .then((projectEstablishment) => {
-            assert.equal(projectEstablishment.status, 'removed');
-            assert.equal(projectEstablishment.versionId, lastGrantedVersion);
-          })
-          .then(() =>
-            this.models.ProjectVersion.query().findById(versionToGrant)
-          )
-          .then((version) => {
-            assert.equal(
-              version.data.establishments.length,
-              0,
-              'deleted establishments are stripped from the granted version data'
-            );
-          });
+              .first();
+
+        assert.equal(projectEstablishment.status, 'removed');
+        assert.equal(projectEstablishment.versionId, lastGrantedVersion);
+
+        const version = await models.ProjectVersion.query(knexInstance).findById(versionToGrant);
+
+        assert.equal(
+          version.data.establishments.length,
+          0,
+          'deleted establishments are stripped from the granted version data'
+        );
       });
 
-      it('deactivates existing joins if no other establishments selected', () => {
+      it('deactivates existing joins if no other establishments selected', async () => {
         const opts = {
           action: 'grant',
           id: projectId2
@@ -1952,28 +1949,28 @@ describe('Project resolver', () => {
             updatedAt: new Date('2020-10-11').toISOString()
           }
         ];
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(versions))
-          .then(() =>
-            this.models.ProjectEstablishment.query().insert({
+
+        await models.ProjectVersion.query(knexInstance).insert(versions);
+
+        await models.ProjectEstablishment.query(knexInstance).insert({
               establishmentId: 8202,
               projectId: projectId2,
               status: 'active'
-            })
-          )
-          .then(() => this.project(opts))
-          .then(() =>
-            this.models.ProjectEstablishment.query()
+            });
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const projectEstablishment = await models.ProjectEstablishment.query(knexInstance)
               .where({ establishmentId: 8202, projectId: projectId2 })
-              .first()
-          )
-          .then((projectEstablishment) => {
-            assert.equal(projectEstablishment.status, 'removed');
-            assert.equal(projectEstablishment.versionId, lastGrantedVersion);
-          });
+              .first();
+
+        assert.equal(projectEstablishment.status, 'removed');
+        assert.equal(projectEstablishment.versionId, lastGrantedVersion);
       });
 
-      it('reactivates removed joins that are readded', () => {
+      it('reactivates removed joins that are readded', async () => {
         const opts = {
           action: 'grant',
           id: projectId2
@@ -2006,32 +2003,32 @@ describe('Project resolver', () => {
             updatedAt: new Date('2020-10-11').toISOString()
           }
         ];
-        return Promise.resolve()
-          .then(() => this.models.ProjectVersion.query().insert(versions))
-          .then(() =>
-            this.models.ProjectEstablishment.query().insert({
+
+        await models.ProjectVersion.query(knexInstance).insert(versions);
+
+        await models.ProjectEstablishment.query(knexInstance).insert({
               establishmentId: 8202,
               projectId: projectId2,
               status: 'removed',
               versionId: lastGrantedVersion
-            })
-          )
-          .then(() => this.project(opts))
-          .then(() =>
-            this.models.ProjectEstablishment.query()
+            });
+
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+
+        const projectEstablishment = await models.ProjectEstablishment.query(knexInstance)
               .where({ establishmentId: 8202, projectId: projectId2 })
-              .first()
-          )
-          .then((projectEstablishment) => {
-            assert.equal(projectEstablishment.status, 'active');
-            assert.equal(projectEstablishment.versionId, null);
-          });
+              .first();
+
+        assert.equal(projectEstablishment.status, 'active');
+        assert.equal(projectEstablishment.versionId, null);
       });
     });
   });
 
   describe('create', () => {
-    it('creates a new project with an empty project version if called without a version param', () => {
+    it('creates a new project with an empty project version if called without a version param', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -2039,29 +2036,29 @@ describe('Project resolver', () => {
           licenceHolderId: profileId
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query())
-        .then((projects) => {
-          assert.equal(projects.length, 1, '1 project should exist in table');
-          return this.models.ProjectVersion.query()
-            .where({ projectId: projects[0].id })
-            .then((versions) => {
-              assert.equal(
-                versions.length,
-                1,
-                'version should have been created'
-              );
-              assert.deepEqual(
-                versions[0].data,
-                null,
-                'version data should be empty'
-              );
-            });
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const projects = await models.Project.query(knexInstance);
+      assert.equal(projects.length, 1, '1 project should exist in table');
+
+      const versions = await models.ProjectVersion.query(knexInstance).where({ projectId: projects[0].id });
+
+      assert.equal(
+        versions.length,
+        1,
+        'version should have been created'
+      );
+      assert.deepEqual(
+        versions[0].data,
+        null,
+        'version data should be empty'
+      );
     });
 
-    it('creates a new project and passes version data to a new version', () => {
+    it('creates a new project and passes version data to a new version', async () => {
       const data = {
         a: 1,
         b: 2,
@@ -2081,30 +2078,32 @@ describe('Project resolver', () => {
           }
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query())
-        .then((projects) => {
-          assert(projects.length === 1, 'project should have been added');
-          assert.equal(
-            projects[0].title,
-            data.title,
-            'title should have been added to project'
-          );
-          return this.models.ProjectVersion.query()
-            .where({ projectId: projects[0].id })
-            .then((versions) => {
-              assert(versions.length === 1, 'version should be created');
-              assert.deepEqual(
-                versions[0].data,
-                data,
-                'version data should have been populated'
-              );
-            });
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const projects = await models.Project.query(knexInstance);
+
+      assert(projects.length === 1, 'project should have been added');
+      assert.equal(
+        projects[0].title,
+        data.title,
+        'title should have been added to project'
+      );
+
+      const versions = await models.ProjectVersion.query(knexInstance)
+        .where({ projectId: projects[0].id });
+
+      assert(versions.length === 1, 'version should be created');
+      assert.deepEqual(
+        versions[0].data,
+        data,
+        'version data should have been populated'
+      );
     });
 
-    it('adds the licence holder to both the project and the version', () => {
+    it('adds the licence holder to both the project and the version', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -2119,20 +2118,16 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => {
-          return this.models.Project.query()
-            .findOne({ title: opts.data.title })
-            .withGraphFetched('version');
-        })
-        .then((project) => {
-          assert.deepStrictEqual(project.licenceHolderId, profileId);
-          assert.deepStrictEqual(project.version[0].licenceHolderId, profileId);
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findOne({ title: opts.data.title }).withGraphFetched('version');
+      assert.deepStrictEqual(project.licenceHolderId, profileId);
+      assert.deepStrictEqual(project.version[0].licenceHolderId, profileId);
     });
 
-    it('removes establishments and transfer to est from version', () => {
+    it('removes establishments and transfer to est from version', async () => {
       const data = {
         establishments: [
           {
@@ -2165,25 +2160,26 @@ describe('Project resolver', () => {
           }
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query())
-        .then((projects) => {
-          assert(projects.length === 1, 'project should have been added');
-          return this.models.ProjectVersion.query()
-            .where({ projectId: projects[0].id })
-            .then((versions) => {
-              assert(versions.length === 1, 'version should be created');
-              assert.deepEqual(
-                versions[0].data,
-                expected,
-                'establishment and transfer info should have been stripped'
-              );
-            });
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const projects = await models.Project.query(knexInstance);
+      assert(projects.length === 1, 'project should have been added');
+
+      const versions = await models.ProjectVersion.query(knexInstance)
+        .where({ projectId: projects[0].id });
+
+      assert(versions.length === 1, 'version should be created');
+      assert.deepEqual(
+        versions[0].data,
+        expected,
+        'establishment and transfer info should have been stripped'
+      );
     });
 
-    it('adds id properties to protocol species details if missing', () => {
+    it('adds id properties to protocol species details if missing', async () => {
       const data = {
         title: 'Species IDs',
         species: ['mice', 'rats'],
@@ -2219,89 +2215,87 @@ describe('Project resolver', () => {
           }
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query())
-        .then((projects) => {
-          return this.models.ProjectVersion.query()
-            .where({ projectId: projects[0].id })
-            .then((versions) => {
-              assert(versions.length === 1, 'version not added');
-              const version = versions[0].data;
-              assert.equal(
-                version.protocols.length,
-                3,
-                'version should have 3 protocols'
-              );
-              assert.equal(version.protocols[0].title, 'Mouse protocol');
-              assert.equal(version.protocols[1].title, 'Rat protocol');
-              assert.equal(version.protocols[2].title, 'Both protocol');
 
-              assert.ok(version.protocols[0].speciesDetails[0].id.match(uuid));
-              assert.equal(
-                version.protocols[0].speciesDetails[0].value,
-                'mice'
-              );
-              assert.equal(
-                version.protocols[0].speciesDetails[0]['maximum-times-used'],
-                '100'
-              );
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
 
-              assert.ok(version.protocols[1].speciesDetails[0].id.match(uuid));
-              assert.equal(
-                version.protocols[1].speciesDetails[0].value,
-                'rats'
-              );
-              assert.equal(
-                version.protocols[1].speciesDetails[0]['maximum-times-used'],
-                '200'
-              );
+      const projects = await models.Project.query(knexInstance);
 
-              assert.ok(version.protocols[2].speciesDetails[0].id.match(uuid));
-              assert.equal(
-                version.protocols[2].speciesDetails[0].value,
-                'mice'
-              );
-              assert.equal(
-                version.protocols[2].speciesDetails[0]['maximum-times-used'],
-                '300'
-              );
+      const versions = await models.ProjectVersion.query(knexInstance)
+        .where({ projectId: projects[0].id });
+      assert(versions.length === 1, 'version not added');
 
-              assert.ok(version.protocols[2].speciesDetails[1].id.match(uuid));
-              assert.equal(
-                version.protocols[2].speciesDetails[1].value,
-                'rats'
-              );
-              assert.equal(
-                version.protocols[2].speciesDetails[1]['maximum-times-used'],
-                '400'
-              );
-            });
-        });
+      const version = versions[0].data;
+      assert.equal(
+        version.protocols.length,
+        3,
+        'version should have 3 protocols'
+      );
+
+      assert.equal(version.protocols[0].title, 'Mouse protocol');
+      assert.equal(version.protocols[1].title, 'Rat protocol');
+      assert.equal(version.protocols[2].title, 'Both protocol');
+
+      assert.ok(version.protocols[0].speciesDetails[0].id.match(uuid));
+      assert.equal(
+        version.protocols[0].speciesDetails[0].value,
+        'mice'
+      );
+      assert.equal(
+        version.protocols[0].speciesDetails[0]['maximum-times-used'],
+        '100'
+      );
+
+      assert.ok(version.protocols[1].speciesDetails[0].id.match(uuid));
+      assert.equal(
+        version.protocols[1].speciesDetails[0].value,
+        'rats'
+      );
+      assert.equal(
+        version.protocols[1].speciesDetails[0]['maximum-times-used'],
+        '200'
+      );
+
+      assert.ok(version.protocols[2].speciesDetails[0].id.match(uuid));
+      assert.equal(
+        version.protocols[2].speciesDetails[0].value,
+        'mice'
+      );
+      assert.equal(
+        version.protocols[2].speciesDetails[0]['maximum-times-used'],
+        '300'
+      );
+
+      assert.ok(version.protocols[2].speciesDetails[1].id.match(uuid));
+      assert.equal(
+        version.protocols[2].speciesDetails[1].value,
+        'rats'
+      );
+      assert.equal(
+        version.protocols[2].speciesDetails[1]['maximum-times-used'],
+        '400'
+      );
     });
   });
 
   describe('transfer', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Establishment.query().insert({
+    beforeEach(async () => {
+      await models.Establishment.query(knexInstance).insert({
             id: 8203,
             name: 'Univerty of Cheese'
-          })
-        )
-        .then(() =>
-          this.models.Project.query().insert({
+          });
+
+      await models.Project.query(knexInstance).insert({
             id: projectId,
             status: 'active',
             establishmentId: 8201,
             licenceHolderId: profileId,
             title: 'Project to transfer'
-          })
-        );
+          });
     });
 
-    it("throws an error if the version to transfer isn't submitted", () => {
+    it("throws an error if the version to transfer isn't submitted", async () => {
       const opts = {
         action: 'transfer',
         id: projectId,
@@ -2309,26 +2303,30 @@ describe('Project resolver', () => {
           establishmentId: 8203
         }
       };
-      return Promise.resolve()
-        .then(() =>
-          this.models.ProjectVersion.query().insert({
+
+      await models.ProjectVersion.query(knexInstance).insert({
             projectId,
             status: 'draft',
             data: {
               foo: 'bar',
               transferToEstablishment: 8203
             }
-          })
-        )
-        .then(() => this.project(opts))
-        .catch((err) => {
-          assert.equal(err.message, 'Cannot transfer unsubmitted version');
-        });
+          });
+
+      try {
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+      } catch (error) {
+        transaction.rollback();
+        assert.equal(error.message, 'Cannot transfer unsubmitted version');
+      }
     });
 
     describe('successful transfer', () => {
-      beforeEach(() => {
-        this.input = {
+      let input;
+      beforeEach(async () => {
+        input = {
           action: 'transfer',
           id: projectId,
           data: {
@@ -2339,8 +2337,8 @@ describe('Project resolver', () => {
             hbaFilename: 'bar.docx'
           }
         };
-        return Promise.resolve().then(() =>
-          this.models.ProjectVersion.query().insert({
+
+        await models.ProjectVersion.query(knexInstance).insert({
             projectId,
             status: 'submitted',
             hbaToken: 'HBA_TOKEN',
@@ -2349,16 +2347,18 @@ describe('Project resolver', () => {
               foo: 'bar',
               transferToEstablishment: 8203
             }
-          })
-        );
+          });
       });
 
       it('clones the project into the new establishment updating transferredInDate and pointers to old est and proj', async () => {
-        await this.project(this.input);
-        const newProject = await this.models.Project.query().findOne({
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
+
+        const newProject = await models.Project.query(knexInstance).findOne({
           establishmentId: 8203
         });
-        const oldProject = await this.models.Project.query().findById(
+        const oldProject = await models.Project.query(knexInstance).findById(
           projectId
         );
 
@@ -2370,12 +2370,14 @@ describe('Project resolver', () => {
       });
 
       it('creates a clone of the version under the new project, removing the transfer flag', async () => {
-        await this.project(this.input);
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
 
-        const { id } = await this.models.Project.query().findOne({
+        const { id } = await models.Project.query(knexInstance).findOne({
           establishmentId: 8203
         });
-        const version = await this.models.ProjectVersion.query().findOne({
+        const version = await models.ProjectVersion.query(knexInstance).findOne({
           projectId: id
         });
         assert.equal(version.status, 'granted');
@@ -2384,12 +2386,14 @@ describe('Project resolver', () => {
       });
 
       it('creates a clone of the version under the new project, replacing hba', async () => {
-        await this.project(this.input);
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
 
-        const { id } = await this.models.Project.query().findOne({
+        const { id } = await models.Project.query(knexInstance).findOne({
           establishmentId: 8203
         });
-        const version = await this.models.ProjectVersion.query().findOne({
+        const version = await models.ProjectVersion.query(knexInstance).findOne({
           projectId: id
         });
         assert.equal(
@@ -2405,12 +2409,14 @@ describe('Project resolver', () => {
       });
 
       it('updates the status of the old project to transferred, updates transferredOutDate and new proj/est pointers', async () => {
-        await this.project(this.input);
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
 
-        const newProject = await this.models.Project.query().findOne({
+        const newProject = await models.Project.query(knexInstance).findOne({
           establishmentId: 8203
         });
-        const oldProject = await this.models.Project.query().findById(
+        const oldProject = await models.Project.query(knexInstance).findById(
           projectId
         );
 
@@ -2421,7 +2427,7 @@ describe('Project resolver', () => {
       });
 
       it('creates additional availability relations from the new project', async () => {
-        await this.models.ProjectVersion.query()
+        await models.ProjectVersion.query(knexInstance)
           .findOne({ projectId })
           .patch({
             data: {
@@ -2434,8 +2440,11 @@ describe('Project resolver', () => {
             }
           });
 
-        await this.project(this.input);
-        const newProject = await this.models.Project.query()
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
+
+        const newProject = await models.Project.query(knexInstance)
           .withGraphFetched('additionalEstablishments')
           .findOne({ establishmentId: 8203 });
 
@@ -2455,7 +2464,7 @@ describe('Project resolver', () => {
       });
 
       it('removes any draft AA records created during transfer process', async () => {
-        await this.models.ProjectVersion.query()
+        await models.ProjectVersion.query(knexInstance)
           .findOne({ projectId })
           .patch({
             data: {
@@ -2467,14 +2476,16 @@ describe('Project resolver', () => {
               ]
             }
           });
-        await this.models.ProjectEstablishment.query().insert([
+        await models.ProjectEstablishment.query(knexInstance).insert([
           { projectId, establishmentId: 8201, status: 'draft' },
           { projectId, establishmentId: 8202, status: 'draft' }
         ]);
 
-        await this.project(this.input);
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
 
-        const oldProject = await this.models.Project.query()
+        const oldProject = await models.Project.query(knexInstance)
           .withGraphFetched('additionalEstablishments')
           .findById(projectId);
 
@@ -2482,7 +2493,7 @@ describe('Project resolver', () => {
       });
 
       it('leaves pre-existing AA records created prior to transfer process', async () => {
-        await this.models.ProjectVersion.query()
+        await models.ProjectVersion.query(knexInstance)
           .findOne({ projectId })
           .patch({
             data: {
@@ -2494,14 +2505,16 @@ describe('Project resolver', () => {
               ]
             }
           });
-        await this.models.ProjectEstablishment.query().insert([
+        await models.ProjectEstablishment.query(knexInstance).insert([
           { projectId, establishmentId: 8201, status: 'draft' },
           { projectId, establishmentId: 8202, status: 'active' }
         ]);
 
-        await this.project(this.input);
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
 
-        const oldProject = await this.models.Project.query()
+        const oldProject = await models.Project.query(knexInstance)
           .withGraphFetched('additionalEstablishments')
           .findById(projectId);
 
@@ -2510,7 +2523,7 @@ describe('Project resolver', () => {
       });
 
       it('moves any project reminders to the new project', async () => {
-        await this.models.ProjectVersion.query()
+        await models.ProjectVersion.query(knexInstance)
           .findOne({ projectId })
           .patch({
             data: {
@@ -2532,7 +2545,7 @@ describe('Project resolver', () => {
             }
           });
 
-        await this.models.Reminder.query().insert([
+        await models.Reminder.query(knexInstance).insert([
           {
             modelType: 'project',
             modelId: projectId,
@@ -2551,9 +2564,11 @@ describe('Project resolver', () => {
           }
         ]);
 
-        await this.project(this.input);
+        transaction = await knexInstance.transaction();
+        await this.project(input, transaction);
+        transaction.commit();
 
-        const oldProjectReminders = await this.models.Reminder.query().where({
+        const oldProjectReminders = await models.Reminder.query(knexInstance).where({
           modelId: projectId
         });
         assert.deepEqual(
@@ -2562,10 +2577,10 @@ describe('Project resolver', () => {
           'there should be no-longer be reminders at the old project'
         );
 
-        const newProject = await this.models.Project.query().findOne({
+        const newProject = await models.Project.query(knexInstance).findOne({
           establishmentId: 8203
         });
-        const newProjectReminders = await this.models.Reminder.query().where({
+        const newProjectReminders = await models.Reminder.query(knexInstance).where({
           modelId: newProject.id
         });
         assert.deepEqual(
@@ -2582,10 +2597,8 @@ describe('Project resolver', () => {
   });
 
   describe('transfer-draft', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Establishment.query().insert([
+    beforeEach(async () => {
+      await models.Establishment.query(knexInstance).insert([
             {
               id: 8203,
               name: 'Unassociated Establishment'
@@ -2594,10 +2607,9 @@ describe('Project resolver', () => {
               id: 8204,
               name: 'University of Life'
             }
-          ])
-        )
-        .then(() =>
-          this.models.Permission.query()
+          ]);
+
+      await models.Permission.query(knexInstance)
             .insert([
               {
                 establishmentId: 8201,
@@ -2610,10 +2622,9 @@ describe('Project resolver', () => {
                 role: 'basic'
               }
             ])
-            .returning('*')
-        )
-        .then(() =>
-          this.models.Project.query().insert([
+            .returning('*');
+
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               status: 'active',
@@ -2626,11 +2637,10 @@ describe('Project resolver', () => {
               establishmentId: 8201,
               licenceHolderId: profileId
             }
-          ])
-        );
+          ]);
     });
 
-    it('cannot change the establishment for a non-draft project', () => {
+    it('cannot change the establishment for a non-draft project', async () => {
       const opts = {
         action: 'transfer-draft',
         id: projectId,
@@ -2639,14 +2649,17 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .catch((err) => {
-          assert.equal(err.message, 'Cannot transfer non-draft projects');
-        });
+      try {
+        transaction = await knexInstance.transaction();
+        transaction = await this.project(opts, transaction);
+        transaction.commit();
+      } catch (error) {
+        transaction.rollback();
+        assert.equal(error.message, 'Cannot transfer non-draft projects');
+      }
     });
 
-    it('cannot transfer the project to an establishment the licence holder is not associated with', () => {
+    it('cannot transfer the project to an establishment the licence holder is not associated with', async () => {
       const opts = {
         action: 'transfer-draft',
         id: projectId2,
@@ -2655,17 +2668,20 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .catch((err) => {
-          assert.equal(
-            err.message,
-            'Cannot transfer to an establishment the licence holder is not associated with'
-          );
-        });
+      try {
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+      } catch (error) {
+        transaction.rollback();
+        assert.equal(
+          error.message,
+          'Cannot transfer to an establishment the licence holder is not associated with'
+        );
+      }
     });
 
-    it('can change the primary establishment for a draft project', () => {
+    it('can change the primary establishment for a draft project', async () => {
       const opts = {
         action: 'transfer-draft',
         id: projectId2,
@@ -2674,116 +2690,108 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then((project) => {
-          assert.equal(project.establishmentId, 8204);
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+      assert.equal(project.establishmentId, 8204);
     });
   });
 
   describe('delete-amendments', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
-            {
-              id: projectId,
-              status: 'inactive',
-              establishmentId: 8201,
-              licenceHolderId: profileId
-            },
-            {
-              id: projectId2,
-              status: 'active',
-              establishmentId: 8201,
-              licenceHolderId: profileId,
-              issueDate: new Date().toISOString(),
-              expiryDate: moment(new Date()).add(5, 'years').toISOString()
-            }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
-            {
-              projectId,
-              status: 'submitted',
-              createdAt: new Date().toISOString()
-            },
-            {
-              projectId,
-              status: 'submitted',
-              createdAt: moment().subtract(5, 'minutes').toISOString()
-            },
-            {
-              projectId,
-              status: 'withdrawn',
-              createdAt: moment().subtract(10, 'minutes').toISOString()
-            },
-            {
-              projectId: projectId2,
-              status: 'submitted',
-              createdAt: new Date().toISOString()
-            },
-            {
-              projectId: projectId2,
-              status: 'submitted',
-              createdAt: moment().subtract(5, 'minutes').toISOString()
-            },
-            {
-              projectId: projectId2,
-              status: 'granted',
-              createdAt: moment().subtract(10, 'minutes').toISOString()
-            },
-            {
-              projectId: projectId2,
-              status: 'withdrawn',
-              createdAt: moment().subtract(15, 'minutes').toISOString()
-            }
-          ])
-        );
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
+          {
+            id: projectId,
+            status: 'inactive',
+            establishmentId: 8201,
+            licenceHolderId: profileId
+          },
+          {
+            id: projectId2,
+            status: 'active',
+            establishmentId: 8201,
+            licenceHolderId: profileId,
+            issueDate: new Date().toISOString(),
+            expiryDate: moment(new Date()).add(5, 'years').toISOString()
+          }
+        ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
+          {
+            projectId,
+            status: 'submitted',
+            createdAt: new Date().toISOString()
+          },
+          {
+            projectId,
+            status: 'submitted',
+            createdAt: moment().subtract(5, 'minutes').toISOString()
+          },
+          {
+            projectId,
+            status: 'withdrawn',
+            createdAt: moment().subtract(10, 'minutes').toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'submitted',
+            createdAt: new Date().toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'submitted',
+            createdAt: moment().subtract(5, 'minutes').toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'granted',
+            createdAt: moment().subtract(10, 'minutes').toISOString()
+          },
+          {
+            projectId: projectId2,
+            status: 'withdrawn',
+            createdAt: moment().subtract(15, 'minutes').toISOString()
+          }
+          ]);
     });
 
-    it('soft deletes project and all versions if project is a draft', () => {
+    it('soft deletes project and all versions if project is a draft', async () => {
       const opts = {
         action: 'delete-amendments',
         id: projectId
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.equal(project, null);
-        })
-        .then(() => this.models.ProjectVersion.query().where({ projectId }))
-        .then((versions) => {
-          assert.equal(versions.length, 0);
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      assert.equal(project, null);
+
+      const versions = await models.ProjectVersion.query(knexInstance).where({ projectId });
+      assert.equal(versions.length, 0);
     });
 
-    it('soft deletes all versions since the most recent granted version if not a draft', () => {
+    it('soft deletes all versions since the most recent granted version if not a draft', async () => {
       const opts = {
         action: 'delete-amendments',
         id: projectId2
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then((project) => {
-          assert.ok(project);
-        })
-        .then(() =>
-          this.models.ProjectVersion.query().where({ projectId: projectId2 })
-        )
-        .then((versions) => {
-          assert.equal(versions.length, 2);
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+      assert.ok(project);
+
+      const versions = await models.ProjectVersion.query(knexInstance).where({ projectId: projectId2 });
+      assert.equal(versions.length, 2);
     });
 
-    it('soft deletes all pending reminders', () => {
+    it('soft deletes all pending reminders', async () => {
       const reminders = [
         {
           modelType: 'project',
@@ -2816,40 +2824,38 @@ describe('Project resolver', () => {
         id: projectId2
       };
 
-      return Promise.resolve()
-        .then(() => this.models.Reminder.query().insert(reminders))
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.Reminder.query().where({
+      await models.Reminder.query(knexInstance).insert(reminders);
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const responseReminders = await models.Reminder.query(knexInstance).where({
             modelType: 'project',
             modelId: projectId2
-          })
-        )
-        .then((reminders) => {
-          assert.deepEqual(
-            reminders.length,
-            1,
-            'there should be only one reminder'
-          );
-          assert.deepEqual(
-            reminders[0].status,
-            'active',
-            'the reminder should still be active'
-          );
-          assert.deepEqual(
-            reminders[0].conditionKey,
-            'nmbas',
-            'the reminder should be for the correct condition'
-          );
-        });
+          });
+
+      assert.deepEqual(
+        responseReminders.length,
+        1,
+        'there should be only one reminder'
+      );
+      assert.deepEqual(
+        responseReminders[0].status,
+        'active',
+        'the reminder should still be active'
+      );
+      assert.deepEqual(
+        responseReminders[0].conditionKey,
+        'nmbas',
+        'the reminder should be for the correct condition'
+      );
     });
   });
 
   describe('revoke', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               status: 'active',
@@ -2868,10 +2874,9 @@ describe('Project resolver', () => {
               establishmentId: 8201,
               licenceHolderId: profileId
             }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
             {
               projectId,
               status: 'granted',
@@ -2882,11 +2887,10 @@ describe('Project resolver', () => {
               status: 'granted',
               data: {}
             }
-          ])
-        );
+          ]);
     });
 
-    it('can revoke an active project', () => {
+    it('can revoke an active project', async () => {
       const opts = {
         action: 'revoke',
         id: projectId,
@@ -2896,19 +2900,19 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.equal(project.status, 'revoked');
-          assert.ok(
-            project.revocationDate && moment(project.revocationDate).isValid(),
-            'revocation date should be set'
-          );
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      assert.equal(project.status, 'revoked');
+      assert.ok(
+        project.revocationDate && moment(project.revocationDate).isValid(),
+        'revocation date should be set'
+      );
     });
 
-    it('cannot revoke an expired project', () => {
+    it('cannot revoke an expired project', async () => {
       const opts = {
         action: 'revoke',
         id: expiredProjectId,
@@ -2918,16 +2922,13 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => assert.rejects(() => this.project(opts)))
-        .then(() => this.models.Project.query().findById(expiredProjectId))
-        .then((project) => {
-          assert.equal(project.status, 'expired');
-          assert.equal(project.revocationDate, null);
-        });
+      await assert.rejects(() => this.project(opts));
+      const project = await models.Project.query(knexInstance).findById(expiredProjectId);
+      assert.equal(project.status, 'expired');
+      assert.equal(project.revocationDate, null);
     });
 
-    it('updates the RA date to six months after revocationDate (optional)', () => {
+    it('updates the RA date to six months after revocationDate (optional)', async () => {
       const opts = {
         action: 'revoke',
         id: projectId,
@@ -2941,23 +2942,22 @@ describe('Project resolver', () => {
         retrospectiveAssessment: true
       };
 
-      return Promise.resolve()
-        .then(() =>
-          this.models.ProjectVersion.query()
+      await models.ProjectVersion.query(knexInstance)
             .where({ projectId })
-            .patch({ data })
-        )
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          const expected = moment(project.revocationDate)
-            .add(6, 'months')
-            .toISOString();
-          assert.equal(project.raDate, expected);
-        });
+            .patch({ data });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      const expected = moment(project.revocationDate)
+        .add(6, 'months')
+        .toISOString();
+      assert.equal(project.raDate, expected);
     });
 
-    it('updates the RA date to six months after revocationDate (compulsory), ignoring value from data.', () => {
+    it('updates the RA date to six months after revocationDate (compulsory), ignoring value from data.', async () => {
       const opts = {
         action: 'revoke',
         id: projectId,
@@ -2971,23 +2971,22 @@ describe('Project resolver', () => {
         retrospectiveAssessment: false
       };
 
-      return Promise.resolve()
-        .then(() =>
-          this.models.ProjectVersion.query()
+      await models.ProjectVersion.query(knexInstance)
             .where({ projectId })
-            .patch({ raCompulsory: true, data })
-        )
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          const expected = moment(project.revocationDate)
-            .add(6, 'months')
-            .toISOString();
-          assert.equal(project.raDate, expected);
-        });
+            .patch({ raCompulsory: true, data });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      const expected = moment(project.revocationDate)
+        .add(6, 'months')
+        .toISOString();
+      assert.equal(project.raDate, expected);
     });
 
-    it('sets the RA date to null if ra not required', () => {
+    it('sets the RA date to null if ra not required', async () => {
       const opts = {
         action: 'revoke',
         id: projectId,
@@ -3003,28 +3002,24 @@ describe('Project resolver', () => {
 
       const raDate = moment().add(6, 'months').toISOString();
 
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().findById(projectId).patch({ raDate })
-        )
-        .then(() =>
-          this.models.ProjectVersion.query()
+      await models.Project.query(knexInstance).findById(projectId).patch({ raDate });
+
+      await models.ProjectVersion.query(knexInstance)
             .where({ projectId })
-            .patch({ data })
-        )
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.equal(project.raDate, null);
-        });
+            .patch({ data });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      assert.equal(project.raDate, null);
     });
   });
 
   describe('refuse', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               status: 'inactive',
@@ -3039,10 +3034,9 @@ describe('Project resolver', () => {
               establishmentId: 8201,
               licenceHolderId: profileId
             }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
             {
               projectId,
               status: 'submitted',
@@ -3053,11 +3047,10 @@ describe('Project resolver', () => {
               status: 'granted',
               data: {}
             }
-          ])
-        );
+          ]);
     });
 
-    it('cannot refuse an active project', () => {
+    it('cannot refuse an active project', async () => {
       const opts = {
         action: 'refuse',
         id: projectId2,
@@ -3067,15 +3060,13 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => assert.rejects(() => this.project(opts)))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then((project) => {
-          assert.equal(project.refusedDate, null);
-        });
+      await assert.rejects(() => this.project(opts));
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+      assert.equal(project.refusedDate, null);
     });
 
-    it('can refuse a draft project', () => {
+    it('can refuse a draft project', async () => {
       const opts = {
         action: 'refuse',
         id: projectId,
@@ -3085,22 +3076,22 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.ok(
-            project.refusedDate && moment(project.refusedDate).isValid(),
-            'refused date should be set'
-          );
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+
+      assert.ok(
+        project.refusedDate && moment(project.refusedDate).isValid(),
+        'refused date should be set'
+      );
     });
   });
 
   describe('suspend', () => {
-    beforeEach(() => {
-      return Promise.resolve().then(() =>
-        this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
           {
             id: projectId,
             status: 'active',
@@ -3108,11 +3099,10 @@ describe('Project resolver', () => {
             establishmentId: 8201,
             licenceHolderId: profileId
           }
-        ])
-      );
+        ]);
     });
 
-    it('can suspend a project', () => {
+    it('can suspend a project', async () => {
       const opts = {
         id: projectId,
         action: 'suspend',
@@ -3120,23 +3110,22 @@ describe('Project resolver', () => {
         data: {}
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(opts.id))
-        .then((project) => {
-          assert.ok(project.suspendedDate, 'it has as a suspended date');
-          assert(
-            moment(project.suspendedDate).isValid(),
-            'suspended date is a valid date'
-          );
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(opts.id);
+      assert.ok(project.suspendedDate, 'it has as a suspended date');
+      assert(
+        moment(project.suspendedDate).isValid(),
+        'suspended date is a valid date'
+      );
     });
   });
 
   describe('reinstate', () => {
-    beforeEach(() => {
-      return Promise.resolve().then(() =>
-        this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
           {
             id: projectId,
             status: 'active',
@@ -3145,11 +3134,10 @@ describe('Project resolver', () => {
             licenceHolderId: profileId,
             suspendedDate: moment().toISOString()
           }
-        ])
-      );
+        ]);
     });
 
-    it('can reinstate a suspended project', () => {
+    it('can reinstate a suspended project', async () => {
       const opts = {
         id: projectId,
         action: 'reinstate',
@@ -3157,27 +3145,26 @@ describe('Project resolver', () => {
         data: {}
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(opts.id))
-        .then((project) => {
-          assert.ok(
-            !project.suspendedDate,
-            'it no longer has a suspended date'
-          );
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = models.Project.query(knexInstance).findById(opts.id);
+
+      assert.ok(
+        !project.suspendedDate,
+        'it no longer has a suspended date'
+      );
     });
   });
 
   describe('update-issue-date', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const originalIssueDate = new Date('2020-01-17').toISOString();
       const originalExpiryDate = new Date('2025-01-17').toISOString();
       const duration = { years: 5, months: 0 };
 
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               status: 'active',
@@ -3187,10 +3174,9 @@ describe('Project resolver', () => {
               establishmentId: 8201,
               licenceHolderId: profileId
             }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
             {
               id: '574266e5-ef34-4e34-bf75-7b6201357e75',
               projectId,
@@ -3200,11 +3186,10 @@ describe('Project resolver', () => {
               status: 'granted',
               createdAt: originalIssueDate
             }
-          ])
-        );
+          ]);
     });
 
-    it('can change the issue date of a project', () => {
+    it('can change the issue date of a project', async () => {
       const newIssueDate = new Date('2018-08-15').toISOString();
       const expectedExpiryDate = new Date('2023-08-14').toISOString().split('T')[0];
 
@@ -3216,29 +3201,27 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.equal(
-            project.issueDate,
-            newIssueDate,
-            'issue date was updated correctly'
-          );
-          assert.equal(
-            project.expiryDate.split('T')[0],
-            expectedExpiryDate,
-            'expiry date was updated correctly'
-          );
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      assert.equal(
+        project.issueDate,
+        newIssueDate,
+        'issue date was updated correctly'
+      );
+      assert.equal(
+        project.expiryDate.split('T')[0],
+        expectedExpiryDate,
+        'expiry date was updated correctly'
+      );
     });
   });
 
   describe('update-licence-number', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               status: 'active',
@@ -3250,10 +3233,9 @@ describe('Project resolver', () => {
               licenceHolderId: profileId,
               isLegacyStub: true
             }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
             {
               id: '574266e5-ef34-4e34-bf75-7b6201357e75',
               projectId,
@@ -3263,40 +3245,14 @@ describe('Project resolver', () => {
               status: 'granted',
               createdAt: new Date('2020-01-17').toISOString()
             }
-          ])
-        );
+          ]);
     });
 
-    it('cannot change the licence number of a standard project', () => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query()
+    it('cannot change the licence number of a standard project', async () => {
+      await models.Project.query(knexInstance)
             .findById(projectId)
-            .patch({ isLegacyStub: false })
-        )
-        .then(() => {
-          const newLicenceNumber = 'XYZ-789';
+            .patch({ isLegacyStub: false });
 
-          const opts = {
-            action: 'update-licence-number',
-            id: projectId,
-            data: {
-              licenceNumber: newLicenceNumber
-            }
-          };
-
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .catch((err) => {
-              assert.equal(
-                err.message,
-                'Can only update the licence number for legacy stubs'
-              );
-            });
-        });
-    });
-
-    it('can change the licence number of a project stub', () => {
       const newLicenceNumber = 'XYZ-789';
 
       const opts = {
@@ -3307,24 +3263,46 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.equal(
-            project.licenceNumber,
-            newLicenceNumber,
-            'licence number was updated correctly'
-          );
-        });
+      try {
+        transaction = await knexInstance.transaction();
+        await this.project(opts, transaction);
+        transaction.commit();
+      } catch (error) {
+        transaction.rollback();
+        assert.equal(
+          error.message,
+          'Can only update the licence number for legacy stubs'
+        );
+      }
+    });
+
+    it('can change the licence number of a project stub', async () => {
+      const newLicenceNumber = 'XYZ-789';
+
+      const opts = {
+        action: 'update-licence-number',
+        id: projectId,
+        data: {
+          licenceNumber: newLicenceNumber
+        }
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      assert.equal(
+        project.licenceNumber,
+        newLicenceNumber,
+        'licence number was updated correctly'
+      );
     });
   });
 
   describe('change ppl holder', () => {
-    beforeEach(() => {
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
+    beforeEach(async () => {
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               status: 'active',
@@ -3343,10 +3321,9 @@ describe('Project resolver', () => {
               establishmentId: 8201,
               licenceHolderId: profileId
             }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
             {
               id: '574266e5-ef34-4e34-bf75-7b6201357e75',
               projectId: projectId,
@@ -3365,11 +3342,10 @@ describe('Project resolver', () => {
               status: 'draft',
               createdAt: new Date('2020-01-17').toISOString()
             }
-          ])
-        );
+          ]);
     });
 
-    it('creates a new granted version for granted PPLs', () => {
+    it('creates a new granted version for granted PPLs', async () => {
       const opts = {
         action: 'update',
         id: projectId,
@@ -3378,28 +3354,27 @@ describe('Project resolver', () => {
           'experience-knowledge': 'Some new experience content'
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.Project.query().eager('version').findById(projectId)
-        )
-        .then((project) => {
-          assert.equal(project.version.length, 2);
-          assert.ok(
-            project.version.every((version) => version.status === 'granted')
-          );
-          assert.equal(
-            project.version[0].data['experience-knowledge'],
-            'Previous applicant experience'
-          );
-          assert.equal(
-            project.version[1].data['experience-knowledge'],
-            'Some new experience content'
-          );
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).withGraphFetched('version').findById(projectId);
+      assert.equal(project.version.length, 2);
+      assert.ok(
+        project.version.every((version) => version.status === 'granted')
+      );
+      assert.equal(
+        project.version[0].data['experience-knowledge'],
+        'Previous applicant experience'
+      );
+      assert.equal(
+        project.version[1].data['experience-knowledge'],
+        'Some new experience content'
+      );
     });
 
-    it('updates the amended date on a granted project', () => {
+    it('updates the amended date on a granted project', async () => {
       const opts = {
         action: 'update',
         id: projectId,
@@ -3407,15 +3382,16 @@ describe('Project resolver', () => {
           licenceHolderId: holcId
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId))
-        .then((project) => {
-          assert.ok(isNowish(project.amendedDate));
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId);
+      assert.ok(isNowish(project.amendedDate));
     });
 
-    it('updates the current draft version for draft PPLs', () => {
+    it('updates the current draft version for draft PPLs', async () => {
       const opts = {
         action: 'update',
         id: projectId2,
@@ -3424,22 +3400,21 @@ describe('Project resolver', () => {
           'experience-knowledge': 'Some new experience content'
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() =>
-          this.models.Project.query().eager('version').findById(projectId2)
-        )
-        .then((project) => {
-          assert.equal(project.version.length, 1);
-          assert.equal(project.version[0].status, 'draft');
-          assert.equal(
-            project.version[0].data['experience-knowledge'],
-            'Some new experience content'
-          );
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).withGraphFetched('version').findById(projectId2);
+      assert.equal(project.version.length, 1);
+      assert.equal(project.version[0].status, 'draft');
+      assert.equal(
+        project.version[0].data['experience-knowledge'],
+        'Some new experience content'
+      );
     });
 
-    it('does not update the amended date on a draft project', () => {
+    it('does not update the amended date on a draft project', async () => {
       const opts = {
         action: 'update',
         id: projectId2,
@@ -3447,17 +3422,18 @@ describe('Project resolver', () => {
           licenceHolderId: holcId
         }
       };
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().findById(projectId2))
-        .then((project) => {
-          assert.equal(project.amendedDate, null);
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.query(knexInstance).findById(projectId2);
+      assert.equal(project.amendedDate, null);
     });
   });
 
   describe('Conversion of legacy project licences', () => {
-    it('can create a project stub for a legacy licence', () => {
+    it('can create a project stub for a legacy licence', async () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
       const issueDate = new Date('2020-12-20').toISOString();
@@ -3485,93 +3461,93 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query().eager('version'))
-        .then((projects) => projects[0])
-        .then((project) => {
-          assert.equal(
-            project.status,
-            'active',
-            'the project should be active'
-          );
-          assert.equal(
-            project.isLegacyStub,
-            true,
-            'the project should be a legacy stub'
-          );
-          assert.equal(
-            project.schemaVersion,
-            0,
-            'the schema version should be 0'
-          );
-          assert.equal(
-            project.migratedId,
-            'legacy-conversion',
-            'the project should have a migrated id of "legacy-conversion"'
-          );
-          assert.equal(
-            project.establishmentId,
-            establishmentId,
-            'the project should have an establishment id'
-          );
-          assert.equal(
-            project.licenceHolderId,
-            profileId,
-            'the project should have a licence holder id'
-          );
-          assert.equal(
-            project.licenceNumber,
-            licenceNumber,
-            'the project should have a licence number'
-          );
-          assert.equal(
-            project.issueDate,
-            issueDate,
-            'the project should have an issue date'
-          );
-          assert.equal(
-            project.expiryDate,
-            expectedExpiryDate,
-            'the project should have an expiry date'
-          );
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
 
-          assert.equal(
-            project.version.length,
-            1,
-            'there should be a single project version'
-          );
+      const projects = await models.Project.query(knexInstance).withGraphFetched('version');
+      const project = projects[0];
+      assert.equal(
+        project.status,
+        'active',
+        'the project should be active'
+      );
+      assert.equal(
+        project.isLegacyStub,
+        true,
+        'the project should be a legacy stub'
+      );
+      assert.equal(
+        project.schemaVersion,
+        0,
+        'the schema version should be 0'
+      );
+      assert.equal(
+        project.migratedId,
+        'legacy-conversion',
+        'the project should have a migrated id of "legacy-conversion"'
+      );
+      assert.equal(
+        project.establishmentId,
+        establishmentId,
+        'the project should have an establishment id'
+      );
+      assert.equal(
+        project.licenceHolderId,
+        profileId,
+        'the project should have a licence holder id'
+      );
+      assert.equal(
+        project.licenceNumber,
+        licenceNumber,
+        'the project should have a licence number'
+      );
+      assert.equal(
+        project.issueDate,
+        issueDate,
+        'the project should have an issue date'
+      );
+      assert.equal(
+        project.expiryDate,
+        expectedExpiryDate,
+        'the project should have an expiry date'
+      );
 
-          const version = project.version[0];
-          assert.equal(
-            version.status,
-            'granted',
-            'the version should be granted'
-          );
-          assert.equal(
-            version.asruVersion,
-            true,
-            'the version should be an asru version'
-          );
-          assert.equal(
-            version.data.title,
-            title,
-            'the version should have the same title as the project'
-          );
-          assert.deepEqual(
-            version.data.duration,
-            duration,
-            'the version should have the correct duration'
-          );
-          assert.equal(
-            version.data.isLegacyStub,
-            true,
-            'the version should be flagged as a legacy stub'
-          );
-        });
+      assert.equal(
+        project.version.length,
+        1,
+        'there should be a single project version'
+      );
+
+      const version = project.version[0];
+      assert.equal(
+        version.status,
+        'granted',
+        'the version should be granted'
+      );
+      assert.equal(
+        version.asruVersion,
+        true,
+        'the version should be an asru version'
+      );
+      assert.equal(
+        version.data.title,
+        title,
+        'the version should have the same title as the project'
+      );
+      assert.deepEqual(
+        version.data.duration,
+        duration,
+        'the version should have the correct duration'
+      );
+      assert.equal(
+        version.data.isLegacyStub,
+        true,
+        'the version should be flagged as a legacy stub'
+      );
     });
 
-    it('expires the project stub if the expiry is in the past', () => {
+    it('expires the project stub if the expiry is in the past', async () => {
       const title = 'Expired Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
       const issueDate = new Date('2021-02-17').toISOString();
@@ -3600,40 +3576,41 @@ describe('Project resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.project(opts))
-        .then(() => this.models.Project.query())
-        .then((projects) => projects[0])
-        .then((project) => {
-          assert.equal(
-            project.status,
-            'expired',
-            'the project should be expired'
-          );
-          assert.equal(
-            project.isLegacyStub,
-            true,
-            'the project should be a legacy stub'
-          );
-          assert.equal(
-            project.schemaVersion,
-            0,
-            'the schema version should be 0'
-          );
-          assert.equal(
-            project.issueDate,
-            issueDate,
-            'the project should have an issue date'
-          );
-          assert.equal(
-            project.expiryDate,
-            expectedExpiryDate,
-            'the project should have an expiry date'
-          );
-        });
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const projects = await models.Project.query(knexInstance);
+      const project = projects[0];
+
+      assert.equal(
+        project.status,
+        'expired',
+        'the project should be expired'
+      );
+      assert.equal(
+        project.isLegacyStub,
+        true,
+        'the project should be a legacy stub'
+      );
+      assert.equal(
+        project.schemaVersion,
+        0,
+        'the schema version should be 0'
+      );
+      assert.equal(
+        project.issueDate,
+        issueDate,
+        'the project should have an issue date'
+      );
+      assert.equal(
+        project.expiryDate,
+        expectedExpiryDate,
+        'the project should have an expiry date'
+      );
     });
 
-    it('can convert a project stub into a standard legacy licence', () => {
+    it('can convert a project stub into a standard legacy licence', async () => {
       const title = 'Digitised Paper Licence Stub';
       const licenceNumber = 'XXX-123-XXX';
       const issueDate = new Date('2018-05-15').toISOString();
@@ -3646,9 +3623,7 @@ describe('Project resolver', () => {
         .add(6, 'months')
         .toISOString();
 
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               title,
@@ -3661,10 +3636,9 @@ describe('Project resolver', () => {
               schemaVersion: 0,
               status: 'active'
             }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
             {
               id: '574266e5-ef34-4e34-bf75-7b6201357e75',
               projectId,
@@ -3697,88 +3671,82 @@ describe('Project resolver', () => {
               asruVersion: true,
               createdAt: draftDate
             }
-          ])
-        )
-        .then(() => {
-          const opts = {
-            action: 'convert',
-            id: projectId,
-            data: {
-              establishmentId
-            },
-            meta: {
-              version: '0e13dc10-86a2-4ace-acda-06da54e6e8eb'
-            }
-          };
+          ]);
 
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.Project.query().findById(projectId).eager('version')
-            )
-            .then((project) => {
-              assert.equal(
-                project.status,
-                'active',
-                'the project should still be active'
-              );
-              assert.equal(
-                project.title,
-                conversionTitle,
-                'the project title should reflect the converted version'
-              );
-              assert.equal(
-                project.expiryDate,
-                expectedExpiryDate,
-                'the expiry date should reflect the converted version duration'
-              );
-              assert.equal(
-                project.raDate,
-                expectedRaDate,
-                'the retrospective assessment date should be set and 6 months from expiry'
-              );
-              assert.equal(
-                project.isLegacyStub,
-                false,
-                'the project should not be a legacy stub'
-              );
-              assert.equal(
-                project.version.length,
-                2,
-                'there should be exactly 2 versions'
-              );
+      const opts = {
+        action: 'convert',
+        id: projectId,
+        data: {
+          establishmentId
+        },
+        meta: {
+          version: '0e13dc10-86a2-4ace-acda-06da54e6e8eb'
+        }
+      };
 
-              const convertedVersion = project.version.find(
-                (v) => v.id === '0e13dc10-86a2-4ace-acda-06da54e6e8eb'
-              );
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
 
-              assert.equal(
-                convertedVersion.isLegacyStub,
-                undefined,
-                'the converted version should not be a legacy stub'
-              );
-              assert.equal(
-                convertedVersion.status,
-                'granted',
-                'the converted version should be granted'
-              );
-              assert.equal(
-                convertedVersion.data.title,
-                conversionTitle,
-                'thet title should match the converted version'
-              );
-            });
-        });
+      const project = await models.Project.query(knexInstance).findById(projectId).withGraphFetched('version');
+      assert.equal(
+        project.status,
+        'active',
+        'the project should still be active'
+      );
+      assert.equal(
+        project.title,
+        conversionTitle,
+        'the project title should reflect the converted version'
+      );
+      assert.equal(
+        project.expiryDate,
+        expectedExpiryDate,
+        'the expiry date should reflect the converted version duration'
+      );
+      assert.equal(
+        project.raDate,
+        expectedRaDate,
+        'the retrospective assessment date should be set and 6 months from expiry'
+      );
+      assert.equal(
+        project.isLegacyStub,
+        false,
+        'the project should not be a legacy stub'
+      );
+      assert.equal(
+        project.version.length,
+        2,
+        'there should be exactly 2 versions'
+      );
+
+      const convertedVersion = project.version.find(
+        (v) => v.id === '0e13dc10-86a2-4ace-acda-06da54e6e8eb'
+      );
+
+      assert.equal(
+        convertedVersion.isLegacyStub,
+        undefined,
+        'the converted version should not be a legacy stub'
+      );
+      assert.equal(
+        convertedVersion.status,
+        'granted',
+        'the converted version should be granted'
+      );
+      assert.equal(
+        convertedVersion.data.title,
+        conversionTitle,
+        'thet title should match the converted version'
+      );
     });
 
-    it('can delete a project stub', () => {
+    it('can delete a project stub', async () => {
       const title = 'Digitised Paper Licence Stub';
       const issueDate = new Date('2018-08-15 12:00:00').toISOString();
       const expiryDate = new Date('2023-08-15 12:00:00').toISOString();
 
-      return Promise.resolve()
-        .then(() =>
-          this.models.Project.query().insert([
+      await models.Project.query(knexInstance).insert([
             {
               id: projectId,
               title,
@@ -3791,10 +3759,9 @@ describe('Project resolver', () => {
               schemaVersion: 0,
               status: 'active'
             }
-          ])
-        )
-        .then(() =>
-          this.models.ProjectVersion.query().insert([
+          ]);
+
+      await models.ProjectVersion.query(knexInstance).insert([
             {
               id: '574266e5-ef34-4e34-bf75-7b6201357e75',
               projectId,
@@ -3810,36 +3777,34 @@ describe('Project resolver', () => {
               asruVersion: true,
               createdAt: issueDate
             }
-          ])
-        )
-        .then(() => {
-          const opts = {
-            action: 'delete',
-            id: projectId
-          };
+          ]);
 
-          return Promise.resolve()
-            .then(() => this.project(opts))
-            .then(() =>
-              this.models.Project.queryWithDeleted()
-                .findById(projectId)
-                .eager('version')
-            )
-            .then((project) => {
-              assert(project.deleted, 'the project should be deleted');
-              assert(
-                moment(project.deleted).isValid(),
-                'the project deleted date should be valid'
-              );
-              project.version.map((version) => {
-                assert(version.deleted, 'the version should be deleted');
-                assert(
-                  moment(version.deleted).isValid(),
-                  'the version deleted date should be valid'
-                );
-              });
-            });
-        });
+      const opts = {
+        action: 'delete',
+        id: projectId
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.project(opts, transaction);
+      transaction.commit();
+
+      const project = await models.Project.queryWithDeleted(knexInstance)
+              .findById(projectId)
+              .withGraphFetched('version');
+
+      assert(project.deleted, 'the project should be deleted');
+      assert(
+        moment(project.deleted).isValid(),
+        'the project deleted date should be valid'
+      );
+
+      project.version.map((version) => {
+        assert(version.deleted, 'the version should be deleted');
+        assert(
+          moment(version.deleted).isValid(),
+          'the version deleted date should be valid'
+        );
+      });
     });
   });
 });

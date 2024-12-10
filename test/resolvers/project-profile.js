@@ -1,4 +1,4 @@
-const uuid = require('uuid/v4');
+const { v4: uuid } = require('uuid');
 const assert = require('assert');
 const db = require('../helpers/db');
 const resolver = require('../../lib/resolvers/project-profile');
@@ -10,45 +10,51 @@ const ids = {
 };
 
 describe('ProjectProfile resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.resolver = resolver({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.resolver = resolver({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insertGraph({
-        name: 'Univerty of Croydon',
-        profiles: [
-          {
-            id: ids.licenceHolderId,
-            firstName: 'Licence',
-            lastName: 'Holder',
-            email: 'licence-holder@example.com'
-          },
-          {
-            id: ids.userToInvite,
-            firstName: 'Basic',
-            lastName: 'User',
-            email: 'basic-user@example.com'
-          }
-        ],
-        projects: [
-          {
-            id: ids.projectId,
-            licenceHolderId: ids.licenceHolderId,
-            status: 'inactive',
-            schemaVersion: 1
-          }
-        ]
-      }));
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insertGraph({
+      name: 'Univerty of Croydon',
+      profiles: [
+        {
+          id: ids.licenceHolderId,
+          firstName: 'Licence',
+          lastName: 'Holder',
+          email: 'licence-holder@example.com'
+        },
+        {
+          id: ids.userToInvite,
+          firstName: 'Basic',
+          lastName: 'User',
+          email: 'basic-user@example.com'
+        }
+      ],
+      projects: [
+        {
+          id: ids.projectId,
+          licenceHolderId: ids.licenceHolderId,
+          status: 'inactive',
+          schemaVersion: 1
+        }
+      ]
+    });
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await knexInstance.destroy();
   });
 
-  it('can invite a user to the project', () => {
+  it('can invite a user to the project', async () => {
     const params = {
       model: 'projectProfile',
       action: 'create',
@@ -58,18 +64,16 @@ describe('ProjectProfile resolver', () => {
       }
     };
 
-    return Promise.resolve()
-      .then(() => this.resolver(params))
-      .then(() => {
-        return this.models.Project.query().findById(ids.projectId).withGraphFetched('collaborators');
-      })
-      .then(project => {
-        assert.equal(project.collaborators.length, 1);
-        assert.equal(project.collaborators[0].firstName, 'Basic', 'it should add the profile to the project');
-      });
+    transaction = await knexInstance.transaction();
+    await this.resolver(params, transaction);
+    transaction.commit();
+
+    const project = await models.Project.query(knexInstance).findById(ids.projectId).withGraphFetched('collaborators');
+    assert.equal(project.collaborators.length, 1);
+    assert.equal(project.collaborators[0].firstName, 'Basic', 'it should add the profile to the project');
   });
 
-  it('can remove a user from the project', () => {
+  it('can remove a user from the project', async () => {
     const params = {
       model: 'projectProfile',
       action: 'delete',
@@ -79,13 +83,14 @@ describe('ProjectProfile resolver', () => {
       }
     };
 
-    return Promise.resolve()
-      .then(() => this.models.ProjectProfile.query().insert({ projectId: ids.projectId, profileId: ids.userToInvite }))
-      .then(() => this.resolver(params))
-      .then(() => this.models.Project.query().findById(ids.projectId).withGraphFetched('collaborators'))
-      .then(project => {
-        assert.equal(project.collaborators.length, 0, 'user was removed from project');
-      });
+    await models.ProjectProfile.query(knexInstance).insert({ projectId: ids.projectId, profileId: ids.userToInvite });
+
+    transaction = await knexInstance.transaction();
+    await this.resolver(params, transaction);
+    transaction.commit();
+
+    const project = await models.Project.query(knexInstance).findById(ids.projectId).withGraphFetched('collaborators');
+    assert.equal(project.collaborators.length, 0, 'user was removed from project');
   });
 
 });
