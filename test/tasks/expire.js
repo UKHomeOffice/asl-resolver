@@ -14,7 +14,7 @@ describe('Project expiry', () => {
   before(async () => {
     models = await db.init();
     knexInstance = await db.getKnex();
-    console.log(knexInstance);
+
     this.expire = async () => {
       return expireTask({ models, logger: Logger({ logLevel: 'info' }) }, knexInstance); // switch btw silent | info
     };
@@ -125,43 +125,31 @@ describe('Project expiry', () => {
       });
   });
 
-  it('does not expire projects expiring today', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query(knexInstance).findOne({ licenceNumber: 'active-expires-today' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire projects expiring today', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'active-expires-today' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 
-  it('does not expire projects expiring in the future', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'active-expires-plus-1-week' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire projects expiring in the future', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'active-expires-plus-1-week' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 
-  it('does not expire inactive (draft) projects', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'inactive-expires-null' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire inactive (draft) projects', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'inactive-expires-null' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 
-  it('does not expire revoked projects even if expiry is in the past', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'revoked-expires-minus-1-month' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire revoked projects even if expiry is in the past', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'revoked-expires-minus-1-month' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 });

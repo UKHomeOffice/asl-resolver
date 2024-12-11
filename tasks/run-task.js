@@ -15,8 +15,9 @@ const settings = require('../config');
 const Logger = require('../lib/utils/logger');
 const logger = Logger(settings);
 
-const run = fn => {
-  const models = db(settings.db);
+const run = async fn => {
+  const models = await db(settings.db);
+
   return Promise.resolve()
     .then(() => fn({ models, logger }));
 };
