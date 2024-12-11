@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { enforcementCase } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const uuid = require('uuid/v4');
+const { v4: uuid } = require('uuid');
 
 const establishment = {
   id: 8201,

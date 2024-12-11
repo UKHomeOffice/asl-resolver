@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { trainingCourse } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const uuid = require('uuid/v4');
+const { v4: uuid } = require('uuid');
 
 const establishment = {
   id: 8201,
@@ -24,24 +24,30 @@ const project = {
 };
 
 describe('Training course resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.trainingCourse = trainingCourse({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.trainingCourse = trainingCourse({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert(establishment))
-      .then(() => this.models.Profile.query().insert(profile))
-      .then(() => this.models.Project.query().insert(project));
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insert(establishment);
+    await models.Profile.query(knexInstance).insert(profile);
+    await models.Project.query(knexInstance).insert(project);
   });
 
-  afterEach(() => {
-    return db.clean(this.models);
+  afterEach(async () => {
+    return db.clean(models);
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await knexInstance.destroy();
   });
 
   it('rejects with an error if action unknown', () => {
@@ -54,7 +60,7 @@ describe('Training course resolver', () => {
   });
 
   describe('Create', () => {
-    it('can insert a trainingCourse model', () => {
+    it('can insert a trainingCourse model', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -65,15 +71,16 @@ describe('Training course resolver', () => {
           species: ['mice']
         }
       };
-      return Promise.resolve()
-        .then(() => this.trainingCourse(opts))
-        .then(() => this.models.TrainingCourse.query().findOne({ projectId: project.id }))
-        .then(course => {
-          assert.ok(course);
-          assert.deepEqual(course.startDate, opts.data.startDate);
-          assert.deepEqual(course.title, opts.data.title);
-          assert.deepEqual(course.species, opts.data.species);
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.trainingCourse(opts, transaction);
+      transaction.commit();
+
+      const course = await models.TrainingCourse.query(knexInstance).findOne({ projectId: project.id });
+      assert.ok(course);
+      assert.deepEqual(course.startDate, opts.data.startDate);
+      assert.deepEqual(course.title, opts.data.title);
+      assert.deepEqual(course.species, opts.data.species);
     });
 
   });

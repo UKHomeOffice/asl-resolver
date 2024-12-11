@@ -1,5 +1,5 @@
 const assert = require('assert');
-const uuid = require('uuid/v4');
+const { v4: uuid } = require('uuid');
 const resolver = require('../../lib/resolvers/export');
 const db = require('../helpers/db');
 
