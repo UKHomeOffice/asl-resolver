@@ -61,35 +61,42 @@ function isThenish(date, expected) {
 }
 
 describe('PIL resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.pil = pil({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.pil = pil({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert([
-        {
-          id: 8201,
-          name: 'Univerty of Croydon'
-        },
-        {
-          id: 8202,
-          name: 'Marvell Pharma'
-        }
-      ]))
-      .then(() => this.models.Profile.query().insertGraph(
-        [ PILH, HOLC, LICENSING ],
-        { relate: true }
-      ));
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insert([
+      {
+        id: 8201,
+        name: 'Univerty of Croydon'
+      },
+      {
+        id: 8202,
+        name: 'Marvell Pharma'
+      }
+    ]);
+
+    await models.Profile.query(knexInstance).insertGraph(
+      [PILH, HOLC, LICENSING],
+      { relate: true }
+    );
   });
 
-  afterEach(() => {
-    return db.clean(this.models);
+  afterEach(async () => {
+    return db.clean(models);
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await knexInstance.destroy();
   });
 
   it('rejects with an error if action unknown', () => {
@@ -102,7 +109,7 @@ describe('PIL resolver', () => {
   });
 
   describe('Create', () => {
-    it('can insert a pil model', () => {
+    it('can insert a pil model', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -114,18 +121,20 @@ describe('PIL resolver', () => {
           notesCatF: 'Some notes for CatF'
         }
       };
-      return Promise.resolve()
-        .then(() => this.pil(opts))
-        .then(() => this.models.PIL.query())
-        .then(pils => pils[0])
-        .then(pil => {
-          assert.ok(pil);
-          assert.deepEqual(pil.licenceNumber, opts.data.licenceNumber);
-          assert.deepEqual(pil.site, opts.data.site);
-          assert.deepEqual(pil.procedures, opts.data.procedures);
-          assert.deepEqual(pil.notesCatD, opts.data.notesCatD);
-          assert.deepEqual(pil.notesCatF, opts.data.notesCatF);
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const pils = await models.PIL.query(knexInstance);
+      const pil = pils[0];
+
+      assert.ok(pil);
+      assert.deepEqual(pil.licenceNumber, opts.data.licenceNumber);
+      assert.deepEqual(pil.site, opts.data.site);
+      assert.deepEqual(pil.procedures, opts.data.procedures);
+      assert.deepEqual(pil.notesCatD, opts.data.notesCatD);
+      assert.deepEqual(pil.notesCatF, opts.data.notesCatF);
     });
 
     it('rejects an invalid pil model', () => {
@@ -144,8 +153,8 @@ describe('PIL resolver', () => {
   });
 
   describe('with existing', () => {
-    beforeEach(() => {
-      return this.models.PIL.query().insert({
+    beforeEach(async () => {
+      return models.PIL.query(knexInstance).insert({
         id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
         profileId: PILH.id,
         establishmentId: 8201,
@@ -155,7 +164,7 @@ describe('PIL resolver', () => {
     });
 
     describe('Update', () => {
-      it('can patch a pil', () => {
+      it('can patch a pil', async () => {
         const opts = {
           action: 'update',
           id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
@@ -163,12 +172,13 @@ describe('PIL resolver', () => {
             procedures: ['C']
           }
         };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.deepEqual(pil.procedures, opts.data.procedures);
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.pil(opts, transaction);
+        transaction.commit();
+
+        const pil = await models.PIL.query(knexInstance).findById(opts.id);
+        assert.deepEqual(pil.procedures, opts.data.procedures);
       });
 
       it('rejects updates with an error if id omitted', () => {
@@ -188,22 +198,23 @@ describe('PIL resolver', () => {
     });
 
     describe('Delete', () => {
-      it('soft deletes the model', () => {
+      it('soft deletes the model', async () => {
         const opts = {
           action: 'delete',
           id: '9fbe0218-995d-47d3-88e7-641fc046d7d1'
         };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.deepEqual(pil, undefined);
-          })
-          .then(() => this.models.PIL.queryWithDeleted().findById(opts.id))
-          .then(pil => {
-            assert(pil.deleted);
-            assert(moment(pil.deleted).isValid());
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.pil(opts, transaction);
+        transaction.commit();
+
+        const pilSoftDelete = await models.PIL.query(knexInstance).findById(opts.id);
+        assert.deepEqual(pilSoftDelete, undefined);
+
+        const pilMarkedAsDeleted = await models.PIL.queryWithDeleted(knexInstance).findById(opts.id);
+
+        assert(pilMarkedAsDeleted.deleted);
+        assert(moment(pilMarkedAsDeleted.deleted).isValid());
       });
 
       it('rejects deletes an error if id omitted', () => {
@@ -220,24 +231,24 @@ describe('PIL resolver', () => {
     });
 
     describe('review', () => {
-      it('sets the review date to 5 years from now', () => {
+      it('sets the review date to 5 years from now', async () => {
         const opts = {
           action: 'review',
           id: '9fbe0218-995d-47d3-88e7-641fc046d7d1'
         };
         const expected = moment().add(5, 'years');
 
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.ok(isThenish(pil.reviewDate, expected));
-          });
+        transaction = await knexInstance.transaction();
+        await this.pil(opts, transaction);
+        transaction.commit();
+
+        const pil = await models.PIL.query(knexInstance).findById(opts.id);
+        assert.ok(isThenish(pil.reviewDate, expected));
       });
     });
 
     describe('Transfer', () => {
-      it('can transfer a PIL to a new establishment', () => {
+      it('can transfer a PIL to a new establishment', async () => {
         const opts = {
           action: 'transfer',
           id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
@@ -248,24 +259,24 @@ describe('PIL resolver', () => {
             }
           }
         };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.equal(pil.establishmentId, opts.data.establishment.to.id);
-          })
-          .then(() => this.models.PilTransfer.query().where({ pilId: opts.id }))
-          .then(transfers => {
-            assert(transfers.length === 1);
-            assert(transfers[0].pilId === opts.id);
-            assert(transfers[0].fromEstablishmentId === opts.data.establishment.from.id);
-            assert(transfers[0].toEstablishmentId === opts.data.establishment.to.id);
-          });
+
+        transaction = await knexInstance.transaction();
+        await this.pil(opts, transaction);
+        transaction.commit();
+
+        const pil = await models.PIL.query(knexInstance).findById(opts.id);
+        assert.equal(pil.establishmentId, opts.data.establishment.to.id);
+
+        const transfers = await models.PilTransfer.query(knexInstance).where({ pilId: opts.id });
+        assert(transfers.length === 1);
+        assert(transfers[0].pilId === opts.id);
+        assert(transfers[0].fromEstablishmentId === opts.data.establishment.from.id);
+        assert(transfers[0].toEstablishmentId === opts.data.establishment.to.id);
       });
     });
 
     describe('Suspend', () => {
-      it('can suspend a PIL', () => {
+      it('can suspend a PIL', async () => {
         const opts = {
           id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
           action: 'suspend',
@@ -273,18 +284,18 @@ describe('PIL resolver', () => {
           data: {}
         };
 
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.ok(pil.suspendedDate, 'it has as a suspended date');
-            assert(moment(pil.suspendedDate).isValid(), 'pil suspended date is a valid date');
-          });
+        transaction = await knexInstance.transaction();
+        await this.pil(opts, transaction);
+        transaction.commit();
+
+        const pil = await models.PIL.query(knexInstance).findById(opts.id);
+        assert.ok(pil.suspendedDate, 'it has as a suspended date');
+        assert(moment(pil.suspendedDate).isValid(), 'pil suspended date is a valid date');
       });
     });
 
     describe('Reinstate', () => {
-      it('can reinstate a suspended PIL', () => {
+      it('can reinstate a suspended PIL', async () => {
         const opts = {
           id: '9fbe0218-995d-47d3-88e7-641fc046d7d1',
           action: 'reinstate',
@@ -292,13 +303,14 @@ describe('PIL resolver', () => {
           data: {}
         };
 
-        return Promise.resolve()
-          .then(() => this.models.PIL.query().patchAndFetchById(opts.id, { suspendedDate: moment().toISOString() }))
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.ok(!pil.suspendedDate, 'it no longer has a suspended date');
-          });
+        await models.PIL.query(knexInstance).patchAndFetchById(opts.id, { suspendedDate: moment().toISOString() });
+
+        transaction = await knexInstance.transaction();
+        await this.pil(opts, transaction);
+        transaction.commit();
+
+        const pil = await models.PIL.query(knexInstance).findById(opts.id);
+        assert.ok(!pil.suspendedDate, 'it no longer has a suspended date');
       });
     });
   });
@@ -306,87 +318,88 @@ describe('PIL resolver', () => {
   describe('Grant', () => {
     const expectedReviewDate = moment().add(5, 'years');
 
-    it('can grant a pil', () => {
-      return this.models.PIL.query().insert({
+    it('can grant a pil', async () => {
+      await models.PIL.query(knexInstance).insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
         profileId: PILH.id,
         establishmentId: 8201,
         procedures: ['A']
-      }).then(() => {
-        const opts = {
-          action: 'grant',
-          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-          changedBy: PILH.id,
-          data: {}
-        };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id).withGraphFetched('profile'))
-          .then(pil => {
-            assert.equal(pil.status, 'active', 'pil is active');
-            assert(pil.profile.pilLicenceNumber, 'profile has a PIL licence number');
-            assert(pil.issueDate, 'pil has an issue date');
-            assert(moment(pil.issueDate).isValid(), 'pil issue date is a valid date');
-            assert(pil.reviewDate, 'pil has a review date');
-            assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date is 5 years from issue date');
-          });
       });
+
+      const opts = {
+        action: 'grant',
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        changedBy: PILH.id,
+        data: {}
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const pil = await models.PIL.query(knexInstance).findById(opts.id).withGraphFetched('profile');
+      assert.equal(pil.status, 'active', 'pil is active');
+      assert(pil.profile.pilLicenceNumber, 'profile has a PIL licence number');
+      assert(pil.issueDate, 'pil has an issue date');
+      assert(moment(pil.issueDate).isValid(), 'pil issue date is a valid date');
+      assert(pil.reviewDate, 'pil has a review date');
+      assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date is 5 years from issue date');
     });
 
-    it('can re-grant a revoked pil with a new issue date', () => {
+    it('can re-grant a revoked pil with a new issue date', async () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
       const originalRevocationDate = moment('2019-10-02 12:00:00');
 
-      return Promise.resolve()
-        .then(() => this.models.PIL.query().insert({
-          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-          profileId: PILH.id,
-          establishmentId: 8201,
-          status: 'revoked',
-          issueDate: originalIssueDate.toISOString(),
-          revocationDate: originalRevocationDate.toISOString(),
-          procedures: ['A'],
-          species: ['mice']
-        }))
-        .then(() => this.models.Profile.query().patchAndFetchById(PILH.id, { pilLicenceNumber: 'XYZ-987' }))
-        .then(() => {
-          const opts = {
-            action: 'grant',
-            id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-            changedBy: PILH.id,
-            data: {
-              procedures: ['A', 'B'],
-              species: ['mice', 'rats']
-            }
-          };
-          return Promise.resolve()
-            .then(() => this.pil(opts))
-            .then(() => this.models.PIL.query().findById(opts.id).withGraphFetched('profile'))
-            .then(pil => {
-              assert.equal(pil.profile.pilLicenceNumber, 'XYZ-987');
-              assert.equal(pil.status, 'revoked', 'old pil should still be revoked');
-              assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'old pil issue date should not have been changed');
-            })
-            .then(() => this.models.PIL.query().where({ profileId: PILH.id }))
-            .then(pils => {
-              assert.equal(pils.length, 2, 'A new PIL record should be created with the same licence number');
-              const pil = pils.find(p => p.status === 'active');
-              assert.equal(pil.establishmentId, 8201);
-              assert.deepEqual(pil.species, ['mice', 'rats']);
-              assert.deepEqual(pil.procedures, ['A', 'B']);
-              assert(moment(pil.issueDate).isSame(moment(), 'day'), 'new pil issue date should be todays date');
-              assert(moment(pil.reviewDate).isSame(moment().add(5, 'years'), 'day'), 'new pil review date should be 5 years time');
-              assert.equal(pil.revocationDate, null);
-            });
-        });
+      await models.PIL.query(knexInstance).insert({
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        profileId: PILH.id,
+        establishmentId: 8201,
+        status: 'revoked',
+        issueDate: originalIssueDate.toISOString(),
+        revocationDate: originalRevocationDate.toISOString(),
+        procedures: ['A'],
+        species: ['mice']
+      });
+
+      await models.Profile.query(knexInstance).patchAndFetchById(PILH.id, { pilLicenceNumber: 'XYZ-987' });
+
+      const opts = {
+        action: 'grant',
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        changedBy: PILH.id,
+        data: {
+          procedures: ['A', 'B'],
+          species: ['mice', 'rats']
+        }
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const singlePIL = await models.PIL.query(knexInstance).findById(opts.id).withGraphFetched('profile');
+      assert.equal(singlePIL.profile.pilLicenceNumber, 'XYZ-987');
+      assert.equal(singlePIL.status, 'revoked', 'old pil should still be revoked');
+      assert(moment(singlePIL.issueDate).isSame(originalIssueDate, 'day'), 'old pil issue date should not have been changed');
+
+      const pils = await models.PIL.query(knexInstance).where({ profileId: PILH.id });
+      assert.equal(pils.length, 2, 'A new PIL record should be created with the same licence number');
+
+      const pil = pils.find(p => p.status === 'active');
+      assert.equal(pil.establishmentId, 8201);
+      assert.deepEqual(pil.species, ['mice', 'rats']);
+      assert.deepEqual(pil.procedures, ['A', 'B']);
+      assert(moment(pil.issueDate).isSame(moment(), 'day'), 'new pil issue date should be todays date');
+      assert(moment(pil.reviewDate).isSame(moment().add(5, 'years'), 'day'), 'new pil review date should be 5 years time');
+      assert.equal(pil.revocationDate, null);
     });
 
-    it('amendments do not reset the issue date but update the review date', () => {
+    it('amendments do not reset the issue date but update the review date', async () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
       const originalReviewDate = moment('2024-10-01 12:00:00');
       const expectedReviewDate = moment().add(5, 'years');
 
-      return this.models.PIL.query().insert({
+      await models.PIL.query(knexInstance).insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
         profileId: PILH.id,
         establishmentId: 8201,
@@ -395,34 +408,35 @@ describe('PIL resolver', () => {
         reviewDate: originalReviewDate.toISOString(),
         licenceNumber: 'XYZ-987',
         procedures: ['A']
-      }).then(() => {
-        const opts = {
-          action: 'grant',
-          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-          changedBy: PILH.id,
-          data: {
-            procedures: ['A', 'B']
-          }
-        };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.equal(pil.status, 'active', 'pil is active');
-            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number should not be changed');
-            assert(pil.issueDate, 'pil has an issue date');
-            assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
-            assert(pil.reviewDate, 'pil has a review date');
-            assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date should be 5 years from current date');
-          });
       });
+
+      const opts = {
+        action: 'grant',
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        changedBy: PILH.id,
+        data: {
+          procedures: ['A', 'B']
+        }
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const pil = await models.PIL.query(knexInstance).findById(opts.id);
+      assert.equal(pil.status, 'active', 'pil is active');
+      assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number should not be changed');
+      assert(pil.issueDate, 'pil has an issue date');
+      assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
+      assert(pil.reviewDate, 'pil has a review date');
+      assert(moment(pil.reviewDate).isSame(expectedReviewDate, 'day'), 'pil review date should be 5 years from current date');
     });
 
-    it('amendments by ASRU do not reset the review date', () => {
+    it('amendments by ASRU do not reset the review date', async () => {
       const originalIssueDate = moment('2019-10-01 12:00:00');
       const originalReviewDate = moment('2024-10-01 12:00:00');
 
-      return this.models.PIL.query().insert({
+      await models.PIL.query(knexInstance).insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
         profileId: PILH.id,
         establishmentId: 8201,
@@ -431,59 +445,60 @@ describe('PIL resolver', () => {
         reviewDate: originalReviewDate.toISOString(),
         licenceNumber: 'XYZ-987',
         procedures: ['A']
-      }).then(() => {
-        const opts = {
-          action: 'grant',
-          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-          changedBy: LICENSING.id,
-          data: {
-            procedures: ['A', 'B']
-          }
-        };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id))
-          .then(pil => {
-            assert.equal(pil.status, 'active', 'pil is active');
-            assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number should not be changed');
-            assert(pil.issueDate, 'pil has an issue date');
-            assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
-            assert(pil.reviewDate, 'pil has a review date');
-            assert.equal(pil.reviewDate, originalReviewDate.toISOString(), 'pil review date should be 5 years from original issue date');
-          });
       });
+
+      const opts = {
+        action: 'grant',
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        changedBy: LICENSING.id,
+        data: {
+          procedures: ['A', 'B']
+        }
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const pil = await models.PIL.query(knexInstance).findById(opts.id);
+      assert.equal(pil.status, 'active', 'pil is active');
+      assert.equal(pil.licenceNumber, 'XYZ-987', 'pil licence number should not be changed');
+      assert(pil.issueDate, 'pil has an issue date');
+      assert(moment(pil.issueDate).isSame(originalIssueDate, 'day'), 'pil issue date should not be updated');
+      assert(pil.reviewDate, 'pil has a review date');
+      assert.equal(pil.reviewDate, originalReviewDate.toISOString(), 'pil review date should be 5 years from original issue date');
     });
 
-    it('creates a licence number if the user does not have one', () => {
-      return this.models.PIL.query().insert({
+    it('creates a licence number if the user does not have one', async () => {
+      await models.PIL.query(knexInstance).insert({
         id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
         profileId: PILH.id,
         establishmentId: 8201,
         procedures: ['A']
-      }).then(() => {
-        const opts = {
-          action: 'grant',
-          id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
-          changedBy: HOLC.id,
-          data: {}
-        };
-        return Promise.resolve()
-          .then(() => this.pil(opts))
-          .then(() => this.models.PIL.query().findById(opts.id).withGraphFetched('profile'))
-          .then(pil => {
-            assert(pil.profile.pilLicenceNumber, 'profile has a PIL licence number');
-          });
       });
-    });
 
+      const opts = {
+        action: 'grant',
+        id: '318301a9-c73d-42e2-a4c2-b070a9c5135f',
+        changedBy: HOLC.id,
+        data: {}
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const pil = await models.PIL.query(knexInstance).findById(opts.id).withGraphFetched('profile');
+      assert(pil.profile.pilLicenceNumber, 'profile has a PIL licence number');
+    });
   });
 
   describe('Update conditions', () => {
-    beforeEach(() => {
-      return this.models.PIL.query().insert(CONDITIONS_PIL);
+    beforeEach(async () => {
+      return models.PIL.query(knexInstance).insert(CONDITIONS_PIL);
     });
 
-    it('can update the existing conditions', () => {
+    it('can update the existing conditions', async () => {
       const opts = {
         action: 'update-conditions',
         id: CONDITIONS_PIL.id,
@@ -491,15 +506,16 @@ describe('PIL resolver', () => {
           conditions: 'Some new conditions'
         }
       };
-      return Promise.resolve()
-        .then(() => this.pil(opts))
-        .then(() => this.models.PIL.query().findById(opts.id))
-        .then(pil => {
-          assert.deepEqual(pil.conditions, 'Some new conditions', 'the conditions should be updated');
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const pil = await models.PIL.query(knexInstance).findById(opts.id);
+      assert.deepEqual(pil.conditions, 'Some new conditions', 'the conditions should be updated');
     });
 
-    it('can save a new condition reminder', () => {
+    it('can save a new condition reminder', async () => {
       const opts = {
         action: 'update-conditions',
         id: CONDITIONS_PIL.id,
@@ -511,18 +527,18 @@ describe('PIL resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.pil(opts))
-        .then(() => this.models.Reminder.query().where({ modelType: 'pil', modelId: opts.id }))
-        .then(reminders => {
-          assert.deepEqual(reminders.length, 1, 'there should be a single reminder');
-          assert.deepEqual(reminders[0].deadline, '2022-07-01', 'the deadline should be correct');
-          assert.deepEqual(reminders[0].status, 'active', 'the status should be active');
-          assert.deepEqual(reminders[0].deleted, null, 'the deleted column should be null');
-        });
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const reminders = await models.Reminder.query(knexInstance).where({ modelType: 'pil', modelId: opts.id });
+      assert.deepEqual(reminders.length, 1, 'there should be a single reminder');
+      assert.deepEqual(reminders[0].deadline, '2022-07-01', 'the deadline should be correct');
+      assert.deepEqual(reminders[0].status, 'active', 'the status should be active');
+      assert.deepEqual(reminders[0].deleted, null, 'the deleted column should be null');
     });
 
-    it('can update an existing condition reminder', () => {
+    it('can update an existing condition reminder', async () => {
       const reminder = {
         deadline: '2022-07-03',
         modelType: 'pil',
@@ -531,33 +547,32 @@ describe('PIL resolver', () => {
         status: 'active'
       };
 
-      return this.models.Reminder.query().insert(reminder).returning('id')
-        .then(reminder => {
-          const opts = {
-            id: CONDITIONS_PIL.id,
-            action: 'update-conditions',
-            data: {
-              conditions: 'Some new conditions',
-              reminder: {
-                id: reminder.id,
-                deadline: '2022-11-22'
-              }
-            }
-          };
+      const responseReminder = await models.Reminder.query(knexInstance).insert(reminder).returning('id');
 
-          return Promise.resolve()
-            .then(() => this.pil(opts))
-            .then(() => this.models.Reminder.query().where({ modelType: 'pil', modelId: opts.id }))
-            .then(reminders => {
-              assert.deepEqual(reminders.length, 1, 'there should be a single reminder');
-              assert.deepEqual(reminders[0].deadline, '2022-11-22', 'the deadline should be updated');
-              assert.deepEqual(reminders[0].status, 'active', 'the status should still be active');
-              assert.deepEqual(reminders[0].deleted, null, 'the deleted column should be null');
-            });
-        });
+      const opts = {
+        id: CONDITIONS_PIL.id,
+        action: 'update-conditions',
+        data: {
+          conditions: 'Some new conditions',
+          reminder: {
+            id: responseReminder.id,
+            deadline: '2022-11-22'
+          }
+        }
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const reminders = await models.Reminder.query(knexInstance).where({ modelType: 'pil', modelId: opts.id });
+      assert.deepEqual(reminders.length, 1, 'there should be a single reminder');
+      assert.deepEqual(reminders[0].deadline, '2022-11-22', 'the deadline should be updated');
+      assert.deepEqual(reminders[0].status, 'active', 'the status should still be active');
+      assert.deepEqual(reminders[0].deleted, null, 'the deleted column should be null');
     });
 
-    it('can delete an existing condition reminder', () => {
+    it('can delete an existing condition reminder', async () => {
       const reminder = {
         deadline: '2022-07-03',
         modelType: 'pil',
@@ -566,33 +581,31 @@ describe('PIL resolver', () => {
         status: 'active'
       };
 
-      return this.models.Reminder.query().insert(reminder).returning('id')
-        .then(reminder => {
-          const opts = {
-            id: CONDITIONS_PIL.id,
-            action: 'update-conditions',
-            data: {
-              conditions: 'Some new conditions',
-              reminder: {
-                id: reminder.id,
-                deleted: true
-              }
-            }
-          };
+      const responseReminder = await models.Reminder.query(knexInstance).insert(reminder).returning('id');
 
-          return Promise.resolve()
-            .then(() => this.pil(opts))
-            .then(() => this.models.Reminder.query().where({ modelType: 'pil', modelId: opts.id }))
-            .then(reminders => {
-              assert.deepEqual(reminders.length, 0, 'there should be no reminders returned in the standard query');
-            })
-            .then(() => this.models.Reminder.queryWithDeleted().where({ modelType: 'pil', modelId: opts.id }))
-            .then(reminders => {
-              assert.deepEqual(reminders.length, 1, 'there should be a single deleted reminder');
-              assert.ok(reminders[0].deleted, 'the deleted column should be set');
-              assert(moment(reminders[0].deleted).isValid(), 'deleted date is a valid date');
-            });
-        });
+      const opts = {
+        id: CONDITIONS_PIL.id,
+        action: 'update-conditions',
+        data: {
+          conditions: 'Some new conditions',
+          reminder: {
+            id: responseReminder.id,
+            deleted: true
+          }
+        }
+      };
+
+      transaction = await knexInstance.transaction();
+      await this.pil(opts, transaction);
+      transaction.commit();
+
+      const remindersUpdatedConditions = await models.Reminder.query(knexInstance).where({ modelType: 'pil', modelId: opts.id });
+      assert.deepEqual(remindersUpdatedConditions.length, 0, 'there should be no reminders returned in the standard query');
+
+      const reminders = await models.Reminder.queryWithDeleted(knexInstance).where({ modelType: 'pil', modelId: opts.id });
+      assert.deepEqual(reminders.length, 1, 'there should be a single deleted reminder');
+      assert.ok(reminders[0].deleted, 'the deleted column should be set');
+      assert(moment(reminders[0].deleted).isValid(), 'deleted date is a valid date');
     });
   });
 

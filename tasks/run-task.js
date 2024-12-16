@@ -4,7 +4,7 @@ try {
 } catch (e) { /* do nothing */ }
 
 const path = require('path');
-const db = require('@asl/schema');
+const db = require('../scripts/asl-schema');
 const StatsD = require('hot-shots');
 const statsd = new StatsD();
 
@@ -15,8 +15,9 @@ const settings = require('../config');
 const Logger = require('../lib/utils/logger');
 const logger = Logger(settings);
 
-const run = fn => {
-  const models = db(settings.db);
+const run = async fn => {
+  const models = await db(settings.db);
+
   return Promise.resolve()
     .then(() => fn({ models, logger }));
 };

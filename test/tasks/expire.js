@@ -8,20 +8,27 @@ const establishmentId = 8201;
 const profileId = 'f0835b01-00a0-4c7f-954c-13ed2ef7efd9';
 
 describe('Project expiry', () => {
-  before(() => {
-    this.models = db.init();
-    this.expire = () => {
-      return expireTask({ models: this.models, logger: Logger({ logLevel: 'silent' }) });
+  let models;
+  let knexInstance;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+
+    this.expire = async () => {
+      return expireTask({ models, logger: Logger({ logLevel: 'info' }) }, knexInstance); // switch btw silent | info
     };
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert({
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insert({
         id: establishmentId,
         name: 'Univerty of Croydon'
-      }))
-      .then(() => this.models.Profile.query().insert({
+      });
+
+    await models.Profile.query(knexInstance).insert({
         id: profileId,
         userId: 'abc123',
         title: 'Dr',
@@ -31,8 +38,9 @@ describe('Project expiry', () => {
         postcode: 'A1 1AA',
         email: 'test1@example.com',
         telephone: '01234567890'
-      }))
-      .then(() => this.models.Project.query().insert([
+      });
+
+    await models.Project.query(knexInstance).insert([
         {
           title: 'Active project with expiry 1 month ago (should expire)',
           status: 'active',
@@ -97,62 +105,51 @@ describe('Project expiry', () => {
           establishmentId,
           licenceHolderId: profileId
         }
-      ]));
+      ]);
   });
 
-  afterEach(() => db.clean(this.models));
+  afterEach(async () => {
+    await db.clean(models);
+  });
 
-  after(() => this.models.destroy());
+  after(async () => {
+    await knexInstance.destroy();
+  });
 
-  it('expires active projects with an expiry date before midnight of last night', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().where('title', 'like', '%(should expire)%')
-          .then(projects => {
-            projects.map(project => {
-              assert.equal(project.status, 'expired', 'project status should be expired');
-            });
-          });
+  it('expires active projects with an expiry date before midnight of last night', async () => {
+      await this.expire();
+      const projects = await models.Project.query(knexInstance).where('title', 'like', '%(should expire)%');
+
+      projects.map(project => {
+        assert.equal(project.status, 'expired', 'project status should be expired');
       });
   });
 
-  it('does not expire projects expiring today', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'active-expires-today' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire projects expiring today', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'active-expires-today' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 
-  it('does not expire projects expiring in the future', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'active-expires-plus-1-week' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire projects expiring in the future', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'active-expires-plus-1-week' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 
-  it('does not expire inactive (draft) projects', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'inactive-expires-null' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire inactive (draft) projects', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'inactive-expires-null' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 
-  it('does not expire revoked projects even if expiry is in the past', () => {
-    return this.expire()
-      .then(() => {
-        this.models.Project.query().findOne({ licenceNumber: 'revoked-expires-minus-1-month' })
-          .then(project => {
-            assert.notEqual(project.status, 'expired', 'project status should not be expired');
-          });
-      });
+  it('does not expire revoked projects even if expiry is in the past', async () => {
+    await this.expire();
+
+    const project = await models.Project.query(knexInstance).findOne({ licenceNumber: 'revoked-expires-minus-1-month' });
+    assert.notEqual(project.status, 'expired', 'project status should not be expired');
   });
 });

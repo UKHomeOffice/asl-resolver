@@ -2,7 +2,7 @@ const moment = require('moment');
 const assert = require('assert');
 const { trainingPil } = require('../../lib/resolvers');
 const db = require('../helpers/db');
-const uuid = require('uuid/v4');
+const { v4: uuid } = require('uuid');
 
 function isNowish(date) {
   return moment(date).isBetween(moment().subtract(5, 'seconds'), moment().add(5, 'seconds'));
@@ -71,30 +71,36 @@ const trainingPils = [
 ];
 
 describe('Training pil resolver', () => {
-  before(() => {
-    this.models = db.init();
-    this.trainingPil = trainingPil({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.trainingPil = trainingPil({ models });
   });
 
-  beforeEach(() => {
-    return db.clean(this.models)
-      .then(() => this.models.Establishment.query().insert(establishment))
-      .then(() => this.models.Profile.query().insert(profiles))
-      .then(() => this.models.Project.query().insert(project))
-      .then(() => this.models.TrainingCourse.query().insert(trainingCourse))
-      .then(() => this.models.TrainingPil.query().insert(trainingPils));
+  beforeEach(async () => {
+    await db.clean(models);
+
+    await models.Establishment.query(knexInstance).insert(establishment);
+    await models.Profile.query(knexInstance).insert(profiles);
+    await models.Project.query(knexInstance).insert(project);
+    await models.TrainingCourse.query(knexInstance).insert(trainingCourse);
+    await models.TrainingPil.query(knexInstance).insert(trainingPils);
   });
 
-  afterEach(() => {
-    return db.clean(this.models);
+  afterEach(async () => {
+    return db.clean(models);
   });
 
-  after(() => {
-    return this.models.destroy();
+  after(async () => {
+    await knexInstance.destroy();
   });
 
   describe('create', () => {
-    it('creates a new profile if not found', () => {
+    it('creates a new profile if not found', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -106,18 +112,18 @@ describe('Training pil resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(() => this.models.Profile.query().findOne({ email: opts.data.email }))
-        .then(profile => {
-          assert.equal(profile.firstName, opts.data.firstName);
-          assert.equal(profile.lastName, opts.data.lastName);
-          assert.equal(profile.email, opts.data.email);
-          assert.equal(profile.dob, opts.data.dob);
-        });
+      transaction = await knexInstance.transaction();
+      await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      const profile = await models.Profile.query(knexInstance).findOne({ email: opts.data.email });
+      assert.equal(profile.firstName, opts.data.firstName);
+      assert.equal(profile.lastName, opts.data.lastName);
+      assert.equal(profile.email, opts.data.email);
+      assert.equal(profile.dob, opts.data.dob);
     });
 
-    it('creates a new inactive training pil model', () => {
+    it('creates a new inactive training pil model', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -128,16 +134,16 @@ describe('Training pil resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(() => this.models.TrainingPil.query().findOne({ profileId: ids.profile.bruce, trainingCourseId: ids.trainingCourse }))
-        .then(trainingPil => {
-          assert.ok(trainingPil);
-          assert.equal(trainingPil.status, 'inactive');
-        });
+      transaction = await knexInstance.transaction();
+      await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      const trainingPil = await models.TrainingPil.query(knexInstance).findOne({ profileId: ids.profile.bruce, trainingCourseId: ids.trainingCourse });
+      assert.ok(trainingPil);
+      assert.equal(trainingPil.status, 'inactive');
     });
 
-    it('updates the profile DOB if not set', () => {
+    it('updates the profile DOB if not set', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -149,15 +155,15 @@ describe('Training pil resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(() => this.models.Profile.query().findById(ids.profile.bruce))
-        .then(profile => {
-          assert.equal(profile.dob, opts.data.dob);
-        });
+      transaction = await knexInstance.transaction();
+      await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      const profile = await models.Profile.query(knexInstance).findById(ids.profile.bruce);
+      assert.equal(profile.dob, opts.data.dob);
     });
 
-    it('returns an existing trainingPil if already exists', () => {
+    it('returns an existing trainingPil if already exists', async () => {
       const opts = {
         action: 'create',
         data: {
@@ -169,79 +175,80 @@ describe('Training pil resolver', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(trainingPil => {
-          return Promise.resolve()
-            .then(() => this.models.TrainingPil.query().findById(ids.trainingPil))
-            .then(returnedTrainingPil => {
-              assert.equal(trainingPil.id, returnedTrainingPil.id);
-            });
-        });
+      transaction = await knexInstance.transaction();
+      const trainingPil = await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      const returnedTrainingPil = await models.TrainingPil.query(knexInstance).findById(ids.trainingPil);
+      assert.equal(trainingPil.id, returnedTrainingPil.id);
     });
   });
 
   describe('grant', () => {
-    it('can grant an existing trainingPil', () => {
+    it('can grant an existing trainingPil', async () => {
       const opts = {
         action: 'grant',
         id: ids.trainingPil
       };
 
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(() => this.models.TrainingPil.query().findById(ids.trainingPil))
-        .then(trainingPil => {
-          assert.equal(trainingPil.status, 'active');
-          assert.ok(isNowish(trainingPil.issueDate));
-          assert.ok(isNowish(moment(trainingPil.expiryDate).subtract(3, 'months')));
-        });
+      transaction = await knexInstance.transaction();
+      await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      const trainingPil = await models.TrainingPil.query(knexInstance).findById(ids.trainingPil);
+      assert.equal(trainingPil.status, 'active');
+      assert.ok(isNowish(trainingPil.issueDate));
+      assert.ok(isNowish(moment(trainingPil.expiryDate).subtract(3, 'months')));
     });
 
-    it('adds a pilLicenceNumber to the profile if missing', () => {
+    it('adds a pilLicenceNumber to the profile if missing', async () => {
       const opts = {
         action: 'grant',
         id: ids.trainingPil
       };
 
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(() => this.models.Profile.query().findById(ids.profile.existing))
-        .then(profile => {
-          assert.ok(profile.pilLicenceNumber);
-        });
+      transaction = await knexInstance.transaction();
+      await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      const profile = await models.Profile.query(knexInstance).findById(ids.profile.existing);
+      assert.ok(profile.pilLicenceNumber);
     });
 
-    it('associates the user with the establishment if not already', () => {
+    it('associates the user with the establishment if not already', async () => {
       const opts = {
         action: 'grant',
         id: ids.trainingPil
       };
 
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(() => this.models.Permission.query().findOne({ profileId: ids.profile.existing, establishmentId: ids.establishment }))
-        .then(permission => {
-          assert.ok(permission);
-          assert.equal(permission.role, 'basic');
-        });
+      transaction = await knexInstance.transaction();
+      await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      const permission = await models.Permission.query(knexInstance).findOne({ profileId: ids.profile.existing, establishmentId: ids.establishment });
+      assert.ok(permission);
+      assert.equal(permission.role, 'basic');
     });
   });
 
   describe('revoke', () => {
-    it('can revoke an active trainingPil', () => {
+    it('can revoke an active trainingPil', async () => {
       const opts = {
         action: 'grant',
         id: ids.trainingPil
       };
-      return Promise.resolve()
-        .then(() => this.trainingPil(opts))
-        .then(() => this.trainingPil({ ...opts, action: 'revoke' }))
-        .then(() => this.models.TrainingPil.query().findById(ids.trainingPil))
-        .then(trainingPil => {
-          assert.equal(trainingPil.status, 'revoked');
-          assert.ok(isNowish(trainingPil.revocationDate));
-        });
+
+      transaction = await knexInstance.transaction();
+      await this.trainingPil(opts, transaction);
+      transaction.commit();
+
+      transaction = await knexInstance.transaction();
+      await this.trainingPil({ ...opts, action: 'revoke' }, transaction);
+      transaction.commit();
+
+      const trainingPil = await models.TrainingPil.query(knexInstance).findById(ids.trainingPil);
+      assert.equal(trainingPil.status, 'revoked');
+      assert.ok(isNowish(trainingPil.revocationDate));
     });
   });
 });

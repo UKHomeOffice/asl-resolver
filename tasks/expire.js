@@ -1,14 +1,14 @@
 const moment = require('moment');
 
-function expireModels(Model, beforeTime) {
-  return Model.query()
+function expireModels(Model, beforeTime, knex) {
+  return Model.query(knex)
     .patch({ status: 'expired' })
     .where('expiryDate', '<', beforeTime)
     .where('status', 'active')
     .returning('*');
 }
 
-const expire = ({ models, logger }) => {
+const expire = async ({ models, logger }, knex) => {
   const { Project, TrainingPil } = models;
   const midnightLastNight = moment.utc().startOf('day').toISOString();
   logger.info(`performing project and cat e pil expiry check with cutoff of ${midnightLastNight}`);
@@ -24,8 +24,8 @@ const expire = ({ models, logger }) => {
   }
 
   return Promise.all([
-    expireModels(Project, midnightLastNight),
-    expireModels(TrainingPil, midnightLastNight)
+    expireModels(Project, midnightLastNight, knex),
+    expireModels(TrainingPil, midnightLastNight, knex)
   ]).then(([projects, trainingPils]) => {
     reportExpiry(projects, 'project');
     reportExpiry(trainingPils, 'trainingPil');

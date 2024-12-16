@@ -8,18 +8,23 @@ const raId = uuid();
 const profileId = uuid();
 
 describe('Retrospective assessment', () => {
-  before(() => {
-    this.models = db.init();
-    this.retrospectiveAssessment = retrospectiveAssessment({ models: this.models });
+  let models;
+  let knexInstance;
+  let transaction;
+
+  before(async () => {
+    models = await db.init();
+    knexInstance = await db.getKnex();
+    this.retrospectiveAssessment = retrospectiveAssessment({ models });
   });
 
-  beforeEach(() => {
-    return Promise.resolve()
-      .then(() => this.models.Establishment.query().insert({
+  beforeEach(async () => {
+    await models.Establishment.query(knexInstance).insert({
         id: 8201,
         name: 'University of Croydon'
-      }))
-      .then(() => this.models.Profile.query().insert({
+      });
+
+    await models.Profile.query(knexInstance).insert({
         id: profileId,
         userId: 'abc123',
         title: 'Dr',
@@ -29,8 +34,9 @@ describe('Retrospective assessment', () => {
         postcode: 'A1 1AA',
         email: 'test1@example.com',
         telephone: '01234567890'
-      }))
-      .then(() => this.models.Project.query().insert({
+      });
+
+   await models.Project.query(knexInstance).insert({
         id: projectId,
         status: 'revoked',
         revocationDate: new Date('2020-01-01').toISOString(),
@@ -40,15 +46,19 @@ describe('Retrospective assessment', () => {
         licenceNumber: 'PP-627808',
         establishmentId: 8201,
         licenceHolderId: profileId
-      }));
+      });
   });
 
-  afterEach(() => db.clean(this.models));
+  afterEach(async () => {
+    return db.clean(models);
+  });
 
-  after(() => this.models.destroy());
+  after(async () => {
+    await knexInstance.destroy();
+  });
 
   describe('patch', () => {
-    it('updates data on patch', () => {
+    it('updates data on patch', async () => {
       const opts = {
         action: 'patch',
         id: raId,
@@ -69,18 +79,21 @@ describe('Retrospective assessment', () => {
         }
       };
 
-      return Promise.resolve()
-        .then(() => this.models.RetrospectiveAssessment.query().insert(raVersion))
-        .then(() => this.retrospectiveAssessment(opts))
-        .then(() => this.models.RetrospectiveAssessment.query().findById(raId))
-        .then(ra => {
-          const expected = {
-            a: 'b',
-            c: 'd',
-            foo: 'bar'
-          };
-          assert.deepEqual(ra.data, expected);
-        });
+      await models.RetrospectiveAssessment.query(knexInstance).insert(raVersion);
+
+      transaction = await knexInstance.transaction();
+      await this.retrospectiveAssessment(opts, transaction);
+      transaction.commit();
+
+      const ra = await models.RetrospectiveAssessment.query(knexInstance).findById(raId);
+
+      const expected = {
+        a: 'b',
+        c: 'd',
+        foo: 'bar'
+      };
+
+      assert.deepEqual(ra.data, expected);
     });
 
     it('throws if raVersion is not a draft', () => {
