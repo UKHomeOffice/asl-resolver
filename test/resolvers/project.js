@@ -1196,7 +1196,7 @@ describe('Project resolver', () => {
         .then(() => this.models.ProjectVersion.query().insert(version))
         .then(() => this.project(opts))
         .then(() =>
-          this.models.Project.query().findById(projectId).eager('version')
+          this.models.Project.query().findById(projectId).withGraphFetched('version')
         )
         .then((project) => {
           assert.equal(
@@ -3381,7 +3381,7 @@ describe('Project resolver', () => {
       return Promise.resolve()
         .then(() => this.project(opts))
         .then(() =>
-          this.models.Project.query().eager('version').findById(projectId)
+          this.models.Project.query().withGraphFetched('version').findById(projectId)
         )
         .then((project) => {
           assert.equal(project.version.length, 2);
@@ -3427,7 +3427,7 @@ describe('Project resolver', () => {
       return Promise.resolve()
         .then(() => this.project(opts))
         .then(() =>
-          this.models.Project.query().eager('version').findById(projectId2)
+          this.models.Project.query().withGraphFetched('version').findById(projectId2)
         )
         .then((project) => {
           assert.equal(project.version.length, 1);
@@ -3487,7 +3487,7 @@ describe('Project resolver', () => {
 
       return Promise.resolve()
         .then(() => this.project(opts))
-        .then(() => this.models.Project.query().eager('version'))
+        .then(() => this.models.Project.query().withGraphFetched('version'))
         .then((projects) => projects[0])
         .then((project) => {
           assert.equal(
@@ -3714,7 +3714,7 @@ describe('Project resolver', () => {
           return Promise.resolve()
             .then(() => this.project(opts))
             .then(() =>
-              this.models.Project.query().findById(projectId).eager('version')
+              this.models.Project.query().findById(projectId).withGraphFetched('version')
             )
             .then((project) => {
               assert.equal(
@@ -3823,7 +3823,7 @@ describe('Project resolver', () => {
             .then(() =>
               this.models.Project.queryWithDeleted()
                 .findById(projectId)
-                .eager('version')
+                .withGraphFetched('version')
             )
             .then((project) => {
               assert(project.deleted, 'the project should be deleted');
