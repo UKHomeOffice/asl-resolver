@@ -1,14 +1,14 @@
 {
   "comments": [
-    "GHSA-grv7-fg5c-xmjg|@asl/schema>knex>liftoff>findup-sync>micromatch>braces",
-    "GHSA-grv7-fg5c-xmjg|objection>knex>liftoff>findup-sync>micromatch>braces",
-    "GHSA-4jv9-3563-23j3|knex",
-    "GHSA-4jv9-3563-23j3|@asl/schema>knex",
-    "GHSA-4jv9-3563-23j3|objection>knex"
-
+    "GHSA-59fq-727j-hm3f: keycloak-connect contains Open redirect vulnerability in the Node.js adapter",
+    "GHSA-c2qf-rxjj-qqgw: semver vulnerable to Regular Expression Denial of Service",
+    "GHSA-776f-qx25-q3cc: xml2js is vulnerable to prototype pollution"
   ],
   "allowlist": [
-    "GHSA-4jv9-3563-23j3",
-    "GHSA-grv7-fg5c-xmjg"
+    "GHSA-59fq-727j-hm3f",
+    "GHSA-c2qf-rxjj-qqgw",
+    "GHSA-776f-qx25-q3cc"
+
+
   ]
 }
