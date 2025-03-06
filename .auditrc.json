@@ -1,14 +1,6 @@
 {
   "comments": [
-    "GHSA-59fq-727j-hm3f: keycloak-connect contains Open redirect vulnerability in the Node.js adapter",
-    "GHSA-c2qf-rxjj-qqgw: semver vulnerable to Regular Expression Denial of Service",
-    "GHSA-776f-qx25-q3cc: xml2js is vulnerable to prototype pollution"
   ],
   "allowlist": [
-    "GHSA-59fq-727j-hm3f",
-    "GHSA-c2qf-rxjj-qqgw",
-    "GHSA-776f-qx25-q3cc"
-
-
   ]
 }
