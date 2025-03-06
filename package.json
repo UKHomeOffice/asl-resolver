@@ -28,7 +28,7 @@
     "@asl/schema": "^11.0.0",
     "@asl/service": "^11.0.0",
     "@ukhomeoffice/asl-constants": "^2.2.0",
-    "aws-sdk": "2.1169.0",
+    "aws-sdk": "2.1692.0",
     "hot-shots": "^6.8.2",
     "jsondiffpatch": "^0.4.1",
     "jsonwebtoken": "^9.0.0",
