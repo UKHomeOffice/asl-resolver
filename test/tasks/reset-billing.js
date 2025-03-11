@@ -73,8 +73,6 @@ describe('Annual reset of billing', () => {
     const [withBilling2] = await this.models.Establishment.query().where('id', UNI_WITH_BILLING_2.id);
     const [withoutBilling] = await this.models.Establishment.query().where('id', UNI_WITHOUT_BILLING.id);
 
-    console.log(withBilling1);
-
     assertAnnualFieldsRemoved(withBilling1, UNI_WITH_BILLING_1);
     assertAnnualFieldsRemoved(withBilling2, UNI_WITH_BILLING_2);
     assert.equal(withoutBilling.billing, null);
