@@ -795,8 +795,8 @@ describe('Establishment resolver', () => {
         for (const versionId of [project1Version1, project1Version2, project2Version1]) {
           const { data } = await this.models.ProjectVersion.query().findById(versionId);
 
-          assert.deepEqual(data.protocols[0].locations, ['Renamed'], `ID: ${versionId}, sole location is renamed`);
-          assert.deepEqual(data.protocols[1].locations, ['POLE'], `ID: ${versionId}, other location is unchanged`);
+          assert.deepEqual(data.protocols[0].locations, ['Renamed'], `ID: ${versionId}, primary location is unchanged`);
+          assert.deepEqual(data.protocols[1].locations, ['POLE'], `ID: ${versionId}, additional location is renamed`);
           assertIncludesInAnyOrder(data.protocols[2].locations, ['Renamed', 'POLE'], `ID: ${versionId}`);
         }
       });
