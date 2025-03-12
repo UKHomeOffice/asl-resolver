@@ -3,8 +3,9 @@ const moment = require('moment');
 const { establishment } = require('../../lib/resolvers');
 const db = require('../helpers/db');
 const { v4: uuid } = require('uuid');
+const { assertIncludesInAnyOrder } = require('../helpers/assert-hepers');
 
-const nowish = (a, b, n = 3) => {
+const nowish = (a, b = undefined, n = 3) => {
   const diff = moment(a).diff(b, 'seconds');
   return Math.abs(diff) < n;
 };
@@ -20,15 +21,17 @@ const reminder = {
   status: 'active'
 };
 
-const anEstablishment = ({
-  id = 8201,
-  name = 'University of Croydon',
-  updatedAt = '2019-01-01T10:38:43.666Z',
-  corporateStatus = 'non-profit',
-  legalName = undefined,
-  legalPhone = undefined,
-  legalEmail = undefined
-}) => {
+const anEstablishment = (
+  {
+    id = 8201,
+    name = 'University of Croydon',
+    updatedAt = '2019-01-01T10:38:43.666Z',
+    corporateStatus = 'non-profit',
+    legalName = undefined,
+    legalPhone = undefined,
+    legalEmail = undefined
+  }
+) => {
   return {
     id,
     name,
@@ -55,6 +58,65 @@ const aRole = ({ establishmentId = 8201, profileId, type }) => {
     profileId,
     type
   };
+};
+
+const insertProjectOfPrimaryEstablishment = async (models, {
+  establishmentId = 8201,
+  establishmentName = 'University of Croydon',
+  projectId,
+  versionIds
+}) => {
+  await models.Project.query().insert({
+    id: projectId,
+    establishmentId
+  });
+
+  for (const versionId of versionIds) {
+    await models.ProjectVersion.query().insert({
+      id: versionId,
+      projectId,
+      data: {
+        protocols: [
+          { locations: [establishmentName] },
+          { locations: ['POLE'] },
+          { locations: [establishmentName, 'POLE'] }
+        ]
+      }
+    });
+  }
+};
+
+const insertProjectWithAdditionalAvailability = async (models, {
+  primaryEstablishmentId = 8202,
+  primaryEstablishmentName = 'Marvell Pharmaceutical',
+  additionalAvailabilityId = 8201,
+  additionalAvailabilityName = 'University of Croydon',
+  projectId,
+  versionIds
+}) => {
+  await models.Project.query().insert({
+    id: projectId,
+    establishmentId: primaryEstablishmentId
+  });
+
+  await models.ProjectEstablishment.query().insert({
+    projectId,
+    establishmentId: additionalAvailabilityId
+  });
+
+  for (const versionId of versionIds) {
+    await models.ProjectVersion.query().insert({
+      id: versionId,
+      projectId,
+      data: {
+        protocols: [
+          { locations: [primaryEstablishmentName] },
+          { locations: [additionalAvailabilityName] },
+          { locations: [primaryEstablishmentName, additionalAvailabilityName] }
+        ]
+      }
+    });
+  }
 };
 
 describe('Establishment resolver', () => {
@@ -418,7 +480,12 @@ describe('Establishment resolver', () => {
     it('Replaces nprc and removes legal person details when switching from corporate to non-profit', () => {
       return Promise.resolve()
         .then(() => this.models.Establishment.query().insert([
-          anEstablishment({ corporateStatus: 'corporate', legalName: 'John Responsible', legalEmail: 'john@responsible.com', legalPhone: '01234 123456' })
+          anEstablishment({
+            corporateStatus: 'corporate',
+            legalName: 'John Responsible',
+            legalEmail: 'john@responsible.com',
+            legalPhone: '01234 123456'
+          })
         ]))
         .then(() => this.models.Profile.query().insert([
           aProfile(PROFILE_ID_1),
@@ -458,7 +525,12 @@ describe('Establishment resolver', () => {
     it('Replaces nprc and legal person details  when changed', () => {
       return Promise.resolve()
         .then(() => this.models.Establishment.query().insert([
-          anEstablishment({ corporateStatus: 'corporate', legalName: 'John Responsible', legalEmail: 'john@responsible.com', legalPhone: '01234 123456' })
+          anEstablishment({
+            corporateStatus: 'corporate',
+            legalName: 'John Responsible',
+            legalEmail: 'john@responsible.com',
+            legalPhone: '01234 123456'
+          })
         ]))
         .then(() => this.models.Profile.query().insert([
           aProfile(PROFILE_ID_1),
@@ -673,6 +745,93 @@ describe('Establishment resolver', () => {
       });
     });
 
+    describe('Updating establishment name', () => {
+      beforeEach(async () => {
+        await this.models.Establishment.query().insert([
+          {
+            id: 8202,
+            name: 'Marvell Pharmaceutical',
+            updatedAt: '2019-01-01T10:38:43.666Z'
+          }
+        ]);
+      });
+
+      it('renames protocol locations when renaming the primary establishment', async () => {
+        const projectId1 = '0ab141b8-417f-4399-8a25-82566de56902';
+        const project1Version1 = '21dbe1b5-0f00-47eb-aa76-e52bb51872c1';
+        const project1Version2 = '4f646f62-67c7-40b9-9f82-3dd89c57196f';
+
+        const projectId2 = '80be29e7-2a74-4f3d-a8a0-83ad87ad74cc';
+        const project2Version1 = '9638b89a-0810-4f81-95ea-5e28e8280869';
+
+        await insertProjectOfPrimaryEstablishment(
+          this.models,
+          {
+            projectId: projectId1,
+            versionIds: [project1Version1, project1Version2]
+          }
+        );
+
+        await insertProjectOfPrimaryEstablishment(
+          this.models,
+          {
+            projectId: projectId2,
+            versionIds: [project2Version1]
+          }
+        );
+
+        const opts = {
+          action: 'update',
+          id: 8201,
+          data: {
+            name: 'Renamed'
+          }
+        };
+
+        const transaction = await this.models.transaction();
+        await this.establishment(opts, transaction);
+        await transaction.commit();
+
+        for (const versionId of [project1Version1, project1Version2, project2Version1]) {
+          const { data } = await this.models.ProjectVersion.query().findById(versionId);
+
+          assert.deepEqual(data.protocols[0].locations, ['Renamed'], `ID: ${versionId}, primary location is unchanged`);
+          assert.deepEqual(data.protocols[1].locations, ['POLE'], `ID: ${versionId}, additional location is renamed`);
+          assertIncludesInAnyOrder(data.protocols[2].locations, ['Renamed', 'POLE'], `ID: ${versionId}`);
+        }
+      });
+
+      it('Renames protocol locations when an additionally available establishment is renamed', async () => {
+        const projectId = '957a791d-3f8c-47ac-956f-5261b15aefad';
+        const versionId = 'e765631c-3311-46bf-af3d-9562962a592f';
+
+        await insertProjectWithAdditionalAvailability(
+          this.models,
+          {
+            projectId,
+            versionIds: [versionId]
+          }
+        );
+
+        const opts = {
+          action: 'update',
+          id: 8201,
+          data: {
+            name: 'Renamed'
+          }
+        };
+
+        const transaction = await this.models.transaction();
+        await this.establishment(opts, transaction);
+        await transaction.commit();
+
+        const { data } = await this.models.ProjectVersion.query().findById(versionId);
+
+        assert.deepEqual(data.protocols[0].locations, ['Marvell Pharmaceutical'], `ID: ${versionId}, sole location is renamed`);
+        assert.deepEqual(data.protocols[1].locations, ['Renamed'], `ID: ${versionId}, other location is unchanged`);
+        assertIncludesInAnyOrder(data.protocols[2].locations, ['Renamed', 'Marvell Pharmaceutical'], `ID: ${versionId}`);
+      });
+    });
   });
 
 });

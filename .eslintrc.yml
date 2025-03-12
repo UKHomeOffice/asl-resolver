@@ -1,6 +1,9 @@
 extends:
   - "@ukhomeoffice/asl"
 
+parserOptions:
+  ecmaVersion: 2020
+
 plugins:
   - eslint-plugin-undocumented-env
 
